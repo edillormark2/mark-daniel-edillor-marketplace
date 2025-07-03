@@ -123,18 +123,28 @@ export default function CreateListingForm({
       }
 
       router.push("/");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating listing:", error);
 
       // More specific error messages
-      if (error.message?.includes("storage")) {
-        toast.error("Failed to upload image. Please try again.");
-      } else if (error.message?.includes("listings")) {
-        toast.error(
-          "Failed to create listing. Please check your data and try again."
-        );
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof (error as { message?: string }).message === "string"
+      ) {
+        const message = (error as { message: string }).message;
+        if (message.includes("storage")) {
+          toast.error("Failed to upload image. Please try again.");
+        } else if (message.includes("listings")) {
+          toast.error(
+            "Failed to create listing. Please check your data and try again."
+          );
+        } else {
+          toast.error(`Error: ${message || "Unknown error occurred"}`);
+        }
       } else {
-        toast.error(`Error: ${error.message || "Unknown error occurred"}`);
+        toast.error("Error: Unknown error occurred");
       }
     } finally {
       setIsSubmitting(false);

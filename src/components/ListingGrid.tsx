@@ -51,7 +51,7 @@ export default function ListingGrid({ listings, loading }: ListingGridProps) {
 
   return (
     <div className="space-y-6">
-      <div className="font-semibold text-2xl text-black">Today's picks</div>
+      <div className="font-semibold text-2xl text-black">Today&#39;s picks</div>
       <div className="w-full border-t  border-gray-300"></div>
       {/* Results Header */}
       <div className="flex justify-between items-center">

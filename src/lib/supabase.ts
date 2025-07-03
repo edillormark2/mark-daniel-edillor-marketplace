@@ -67,9 +67,12 @@ export const uploadImage = async (file: File): Promise<string> => {
 
     console.log("Upload successful. Public URL:", urlData.publicUrl);
     return urlData.publicUrl;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in uploadImage:", error);
-    throw new Error(error.message || "Failed to upload image");
+    if (error instanceof Error) {
+      throw new Error(error.message || "Failed to upload image");
+    }
+    throw new Error("Failed to upload image");
   }
 };
 
@@ -90,10 +93,11 @@ export const deleteImage = async (imageUrl: string): Promise<void> => {
       console.error("Delete error:", error);
       throw new Error(`Delete failed: ${error.message}`);
     }
-
-    console.log("Image deleted successfully:", fileName);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in deleteImage:", error);
-    throw new Error(error.message || "Failed to delete image");
+    if (error instanceof Error) {
+      throw new Error(error.message || "Failed to delete image");
+    }
+    throw new Error("Failed to delete image");
   }
 };

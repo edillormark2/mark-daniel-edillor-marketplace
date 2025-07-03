@@ -3,12 +3,12 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import Link from "next/link";
-import { Plus, Home } from "lucide-react";
+import { Home } from "lucide-react";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Marketplace Clone - Buy & Sell Locally",
+  title: "Marketplace Clone By Mark Daniel",
   description: "A Facebook Marketplace clone built with Next.js and Supabase",
 };
 
