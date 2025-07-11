@@ -13,10 +13,8 @@ import {
   Package,
   Filter,
   X,
-  Plus,
 } from "lucide-react";
 import { Category } from "../lib/types";
-import Link from "next/link";
 
 interface MobileSidebarSearchProps {
   categories: Category[];
@@ -131,16 +129,6 @@ export default function MobileSidebarSearch({
 
       {/* Desktop Sidebar */}
       <div className="hidden lg:block w-full bg-white rounded-lg shadow-md p-6 sticky top-6">
-        <div className="w-full">
-          <Link
-            href="/create-listing"
-            className="flex items-center justify-center space-x-2 bg-blue-500/20 text-blue-500 px-4 py-2 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Listing</span>
-          </Link>
-        </div>
-
         {/* Search Bar */}
         <div className="mb-6 mt-4">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">

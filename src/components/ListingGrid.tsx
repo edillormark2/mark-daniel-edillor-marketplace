@@ -6,29 +6,59 @@ import ListingCard from "./ListingCard";
 interface ListingGridProps {
   listings: ListingWithCategory[];
   loading: boolean;
+  // Optional: Allow custom skeleton count when listings array is empty
+  skeletonCount?: number;
 }
 
-export default function ListingGrid({ listings, loading }: ListingGridProps) {
+export default function ListingGrid({
+  listings,
+  loading,
+  skeletonCount,
+}: ListingGridProps) {
+  // Determine skeleton count based on listings length or fallback
+  const getSkeletonCount = () => {
+    if (listings.length > 0) {
+      return listings.length;
+    }
+    return skeletonCount || 9; // Default to 9 if no listings and no custom count
+  };
+
   if (loading) {
+    const skeletonItems = getSkeletonCount();
+
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {[...Array(9)].map((_, i) => (
-          <div
-            key={i}
-            className="bg-white rounded-lg shadow-md overflow-hidden"
-          >
-            <div className="h-48 bg-gray-200 animate-pulse"></div>
-            <div className="p-4 space-y-3">
-              <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-              <div className="flex justify-between">
-                <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+      <div className="space-y-6">
+        <div className="font-semibold text-2xl text-black">
+          Today&#39;s picks
+        </div>
+        <div className="w-full border-t border-gray-300"></div>
+
+        {/* Results Header Skeleton */}
+        <div className="flex justify-between items-center">
+          <div className="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+
+        {/* Listings Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {[...Array(skeletonItems)].map((_, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-lg shadow-md overflow-hidden"
+            >
+              <div className="h-48 bg-gray-200 animate-pulse"></div>
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                <div className="flex justify-between">
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   }
@@ -52,7 +82,8 @@ export default function ListingGrid({ listings, loading }: ListingGridProps) {
   return (
     <div className="space-y-6">
       <div className="font-semibold text-2xl text-black">Today&#39;s picks</div>
-      <div className="w-full border-t  border-gray-300"></div>
+      <div className="w-full border-t border-gray-300"></div>
+
       {/* Results Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-bold text-gray-900">

@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import Link from "next/link";
-import { Home } from "lucide-react";
+import { Home, Plus } from "lucide-react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,6 +30,19 @@ export default function RootLayout({
                 <Home className="w-6 h-6" />
                 <span>Marketplace</span>
               </Link>
+
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/create-listing"
+                  className="flex items-center justify-center space-x-2 bg-blue-500 text-white hover:opacity-70 px-4 py-2 rounded-lg transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create a post</span>
+                </Link>
+                <button className="ml-4 px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer">
+                  Signin
+                </button>
+              </div>
             </div>
           </div>
         </header>
