@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (error) throw error;
       toast.success("Successfully signed in!");
-      router.push("/profile");
+      router.push("/");
     } catch (error: any) {
       toast.error(error.message);
       throw error;

@@ -75,7 +75,7 @@ export default function Header() {
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setShowDropdown(!showDropdown)}
-                    className="flex items-center space-x-2 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                    className="flex items-center space-x-2 p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     <Avatar
                       src={profile?.avatar_url}
@@ -98,22 +98,12 @@ export default function Header() {
 
                       <Link
                         href="/profile"
-                        className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
                         onClick={() => setShowDropdown(false)}
                       >
                         <User className="w-4 h-4" />
                         <span>My Profile</span>
                       </Link>
-
-                      <Link
-                        href="/settings"
-                        className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <Settings className="w-4 h-4" />
-                        <span>Settings</span>
-                      </Link>
-
                       <hr className="my-1 border-gray-200" />
 
                       <button
@@ -121,7 +111,7 @@ export default function Header() {
                           setShowDropdown(false);
                           signOut();
                         }}
-                        className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors text-left"
+                        className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors text-left cursor-pointer"
                       >
                         <LogOut className="w-4 h-4" />
                         <span>Sign out</span>
