@@ -1,3 +1,4 @@
+// src/lib/types.ts
 export interface Profile {
   id: string;
   email: string;
@@ -46,6 +47,27 @@ export interface PostFormData {
   photos: File[];
 }
 
+export interface Message {
+  id: string;
+  post_id: string;
+  sender_id: string;
+  sender_email: string;
+  sender_name: string;
+  recipient_id: string;
+  recipient_email: string;
+  subject: string;
+  message: string;
+  created_at: string;
+}
+
+export interface MessageFormData {
+  post_id: string;
+  recipient_id: string;
+  recipient_email: string;
+  subject: string;
+  message: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -58,6 +80,11 @@ export interface Database {
         Row: Post;
         Insert: Omit<Post, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<Post, "id" | "created_at" | "updated_at">>;
+      };
+      messages: {
+        Row: Message;
+        Insert: Omit<Message, "id" | "created_at">;
+        Update: Partial<Omit<Message, "id" | "created_at">>;
       };
     };
   };

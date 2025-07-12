@@ -26,9 +26,6 @@ export default function Avatar({
   };
 
   const getInitial = () => {
-    if (name) {
-      return name.charAt(0).toUpperCase();
-    }
     if (email) {
       return email.charAt(0).toUpperCase();
     }
