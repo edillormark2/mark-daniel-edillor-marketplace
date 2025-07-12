@@ -5,7 +5,7 @@ import { Home, Plus, LogOut, Settings, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import Avatar from "./ui/Avatar";
+import Avatar from "@/components/ui/Avatar";
 import { getUserProfile } from "@/lib/supabase";
 import { Profile } from "@/lib/types";
 
@@ -65,7 +65,7 @@ export default function Header() {
             {user ? (
               <>
                 <Link
-                  href="/create-listing"
+                  href="/create-post"
                   className="flex items-center justify-center space-x-2 bg-blue-500 text-white hover:bg-blue-600 px-4 py-2 rounded-lg transition-colors"
                 >
                   <Plus className="w-4 h-4" />

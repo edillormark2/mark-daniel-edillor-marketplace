@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 // Make sure the path is correct; adjust if your AuthContext is elsewhere
-import { useAuth } from "../../contexts/AuthContext";
-import { Mail, Lock, User, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Mail, Lock, User, Loader2, GraduationCap } from "lucide-react";
 
 interface AuthFormProps {
   mode?: "signin" | "signup";
@@ -18,6 +18,7 @@ export default function AuthForm({
     email: "",
     password: "",
     fullName: "",
+    university: "",
   });
 
   const { signIn, signUp } = useAuth();
@@ -30,7 +31,12 @@ export default function AuthForm({
       if (mode === "signin") {
         await signIn(formData.email, formData.password);
       } else {
-        await signUp(formData.email, formData.password, formData.fullName);
+        await signUp(
+          formData.email,
+          formData.password,
+          formData.fullName,
+          formData.university
+        );
       }
     } catch (error) {
       // Error is handled in the auth context
@@ -55,28 +61,55 @@ export default function AuthForm({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {mode === "signup" && (
-            <div>
-              <label
-                htmlFor="fullName"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Full Name
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
+            <>
+              <div>
+                <label
+                  htmlFor="fullName"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Full Name
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="fullName"
+                    name="fullName"
+                    type="text"
+                    value={formData.fullName}
+                    onChange={handleChange}
+                    className="text-black block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="John Doe"
+                    required
+                  />
                 </div>
-                <input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  className="text-black block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="John Doe"
-                />
               </div>
-            </div>
+
+              <div>
+                <label
+                  htmlFor="university"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  University
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <GraduationCap className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="university"
+                    name="university"
+                    type="text"
+                    value={formData.university}
+                    onChange={handleChange}
+                    className="text-black block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="University of Example"
+                    required
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           <div>

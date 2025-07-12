@@ -1,108 +1,3 @@
-export type Database = {
-  public: {
-    Tables: {
-      categories: {
-        Row: {
-          id: string;
-          name: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          name: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          created_at?: string;
-        };
-      };
-      listings: {
-        Row: {
-          id: string;
-          title: string;
-          description: string | null;
-          price: number;
-          seller_email: string;
-          category_id: string | null;
-          image_url: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          title: string;
-          description?: string | null;
-          price: number;
-          seller_email: string;
-          category_id?: string | null;
-          image_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          title?: string;
-          description?: string | null;
-          price?: number;
-          seller_email?: string;
-          category_id?: string | null;
-          image_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      messages: {
-        Row: {
-          id: string;
-          listing_id: string;
-          buyer_email: string;
-          message: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          listing_id: string;
-          buyer_email: string;
-          message: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          listing_id?: string;
-          buyer_email?: string;
-          message?: string;
-          created_at?: string;
-        };
-      };
-    };
-  };
-};
-
-export type Listing = Database["public"]["Tables"]["listings"]["Row"];
-export type Category = Database["public"]["Tables"]["categories"]["Row"];
-export type Message = Database["public"]["Tables"]["messages"]["Row"];
-
-export type ListingWithCategory = Listing & {
-  categories: Category | null;
-};
-
-export type CreateListingData = {
-  title: string;
-  description: string;
-  price: number;
-  seller_email: string;
-  category_id: string;
-  image?: File;
-};
-
-export type CreateMessageData = {
-  listing_id: string;
-  buyer_email: string;
-  message: string;
-};
-
 export interface Profile {
   id: string;
   email: string;
@@ -111,6 +6,7 @@ export interface Profile {
   avatar_url?: string;
   phone?: string;
   bio?: string;
+  university?: string;
   created_at: string;
   updated_at: string;
 }
@@ -123,3 +19,99 @@ export interface AuthUser {
     avatar_url?: string;
   };
 }
+
+export interface Post {
+  id: string;
+  title: string;
+  description: string;
+  price?: number;
+  main_category: string;
+  sub_category: string;
+  campus: string;
+  photos: string[];
+  seller_id: string;
+  seller_name: string;
+  seller_email: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PostFormData {
+  title: string;
+  description: string;
+  price: string;
+  main_category: string;
+  sub_category: string;
+  campus: string;
+  photos: File[];
+}
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: Profile;
+        Insert: Omit<Profile, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Profile, "id" | "created_at" | "updated_at">>;
+      };
+      posts: {
+        Row: Post;
+        Insert: Omit<Post, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<Post, "id" | "created_at" | "updated_at">>;
+      };
+    };
+  };
+}
+
+export const MAIN_CATEGORIES = [
+  "Campus Jobs",
+  "For Sale",
+  "Jobs",
+  "Services",
+  "Community",
+  "Housing",
+  "Personals",
+  "Events",
+  "Housing Wanted",
+  "Resumes",
+] as const;
+
+export const SUB_CATEGORIES = {
+  "Campus Jobs": ["Part-time", "Full-time", "Internship", "Work Study"],
+  "For Sale": [
+    "Electronics",
+    "Furniture",
+    "Books",
+    "Clothing",
+    "Sports",
+    "Other",
+  ],
+  Jobs: ["Full-time", "Part-time", "Contract", "Internship"],
+  Services: ["Tutoring", "Cleaning", "Moving", "Tech Support", "Other"],
+  Community: ["General", "Study Groups", "Clubs", "Volunteer"],
+  Housing: ["Rent", "Sublet", "Roommate", "Sale"],
+  Personals: [
+    "Friendship",
+    "Girl wants Guy",
+    "General Romance",
+    "Guy wants Girl",
+    "Girl wants Girl",
+    "Guy wants Guy",
+  ],
+  Events: ["Social", "Academic", "Sports", "Cultural", "Other"],
+  "Housing Wanted": ["Rent", "Sublet", "Roommate", "Purchase"],
+  Resumes: ["Entry Level", "Experienced", "Internship", "Graduate"],
+} as const;
+
+export const CAMPUS_LIST = [
+  "University of California, Los Angeles",
+  "Stanford University",
+  "Harvard University",
+  "Massachusetts Institute of Technology",
+  "University of California, Berkeley",
+  "Yale University",
+  "Princeton University",
+  "Columbia University",
+  "University of Chicago",
+  "University of Pennsylvania",
+] as const;
