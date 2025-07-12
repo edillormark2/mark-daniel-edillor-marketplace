@@ -102,3 +102,24 @@ export type CreateMessageData = {
   buyer_email: string;
   message: string;
 };
+
+export interface Profile {
+  id: string;
+  email: string;
+  username?: string;
+  full_name?: string;
+  avatar_url?: string;
+  phone?: string;
+  bio?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  user_metadata: {
+    full_name?: string;
+    avatar_url?: string;
+  };
+}

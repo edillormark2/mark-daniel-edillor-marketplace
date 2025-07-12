@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
-import Link from "next/link";
-import { Home, Plus } from "lucide-react";
+import { AuthProvider } from "@/contexts/AuthContext";
+import Header from "@/components/Header";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,55 +20,32 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <Link
-                href="/"
-                className="flex items-center space-x-2 text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors"
-              >
-                <Home className="w-6 h-6" />
-                <span>Marketplace</span>
-              </Link>
+        <AuthProvider>
+          <Header />
+          <main className="min-h-screen bg-gray-50">{children}</main>
 
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/create-listing"
-                  className="flex items-center justify-center space-x-2 bg-blue-500 text-white hover:opacity-70 px-4 py-2 rounded-lg transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Create a post</span>
-                </Link>
-                <button className="ml-4 px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer">
-                  Signin
-                </button>
+          <footer className="bg-white border-t">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="text-center text-gray-600">
+                <p>
+                  &copy; 2025 Mark Daniel Edillor. Built with Next.js &
+                  Supabase.
+                </p>
               </div>
             </div>
-          </div>
-        </header>
+          </footer>
 
-        <main className="min-h-screen bg-gray-50">{children}</main>
-
-        <footer className="bg-white border-t">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="text-center text-gray-600">
-              <p>
-                &copy; 2025 Mark Daniel Edillor. Built with Next.js & Supabase.
-              </p>
-            </div>
-          </div>
-        </footer>
-
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: "#363636",
-              color: "#fff",
-            },
-          }}
-        />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: "#363636",
+                color: "#fff",
+              },
+            }}
+          />
+        </AuthProvider>
       </body>
     </html>
   );
