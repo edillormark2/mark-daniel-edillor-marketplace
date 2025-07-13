@@ -6,6 +6,7 @@ import { Post } from "@/lib/types";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { MessageService } from "@/lib/messages";
 import { useAuth } from "@/contexts/AuthContext";
+import CheckoutButton from "@/components/payments/CheckoutButton";
 import {
   X,
   MapPin,
@@ -214,11 +215,9 @@ export default function PostDetailModal({
                   </div>
                 )}
               </div>
-
+              {/* Buy Now Button with stripe connect payment integration */}
               <div className="mt-4">
-                <button className="px-4 py-3 bg-green-500 text-white rounded-lg cursor-pointer">
-                  Buy Now
-                </button>
+                <CheckoutButton post={post} size="lg" fullWidth />
               </div>
             </div>
           </div>

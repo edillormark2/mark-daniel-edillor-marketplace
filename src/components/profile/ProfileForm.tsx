@@ -1,11 +1,12 @@
+// code: src/components/profile/ProfileForm.tsx
 "use client";
 
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Profile } from "@/lib/types";
-import { Mail, Phone, FileText, Loader2, Camera } from "lucide-react";
+import { Mail, Phone, FileText, Loader2 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
-import toast from "react-hot-toast";
+import Link from "next/link";
 
 interface ProfileFormProps {
   profile: Profile | null;
@@ -192,6 +193,11 @@ export default function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
           </div>
         </div>
 
+        <Link href="/seller/onboarding">
+          <div className="p-3 bg-indigo-500 rounded-lg text-white cursor-pointer text-center hover:bg-indigo-600 transition-colors mb-4">
+            Setup Your Stripe Account Now!
+          </div>
+        </Link>
         <div className="flex justify-end space-x-3">
           <button
             type="button"
