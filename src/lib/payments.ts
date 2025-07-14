@@ -1,12 +1,16 @@
 // src/lib/payments.ts
-import { createClient } from '@/lib/supabase';
-import { 
-  Transaction, 
-  TransactionStatus, 
+import { createClient } from "@/lib/supabase";
+import { createServiceClient } from "@/lib/server";
+import {
+  Transaction,
+  TransactionStatus,
   TransactionWithDetails,
-  TransactionStatusHistory 
-} from '@/lib/types';
-import { calculatePlatformFee, calculateSellerAmount } from '@/lib/stripe/client';
+  TransactionStatusHistory,
+} from "@/lib/types";
+import {
+  calculatePlatformFee,
+  calculateSellerAmount,
+} from "@/lib/stripe/client";
 
 /**
  * Create a new transaction record
@@ -22,26 +26,27 @@ export async function createTransaction(data: {
   status?: TransactionStatus;
   metadata?: Record<string, any>;
 }): Promise<Transaction | null> {
-  const supabase = createClient();
-  
+  // Use service client for server-side operations
+  const supabase = createServiceClient();
+
   const platformFee = calculatePlatformFee(data.amount);
   const sellerAmount = calculateSellerAmount(data.amount);
 
   const { data: transaction, error } = await supabase
-    .from('transactions')
+    .from("transactions")
     .insert({
       ...data,
-      currency: data.currency || 'usd',
+      currency: data.currency || "usd",
       platform_fee: platformFee,
       seller_amount: sellerAmount,
-      status: data.status || 'pending',
+      status: data.status || "pending",
       metadata: data.metadata || {},
     })
     .select()
     .single();
 
   if (error) {
-    console.error('Error creating transaction:', error);
+    console.error("Error creating transaction:", error);
     return null;
   }
 
@@ -67,15 +72,15 @@ export async function updateTransactionStatus(
   const supabase = createClient();
 
   const { error } = await supabase
-    .from('transactions')
+    .from("transactions")
     .update({
       status,
       ...updates,
     })
-    .eq('id', transactionId);
+    .eq("id", transactionId);
 
   if (error) {
-    console.error('Error updating transaction:', error);
+    console.error("Error updating transaction:", error);
     return false;
   }
 
@@ -96,14 +101,12 @@ export async function logTransactionStatus(
 ): Promise<void> {
   const supabase = createClient();
 
-  await supabase
-    .from('transaction_status_history')
-    .insert({
-      transaction_id: transactionId,
-      status,
-      reason,
-      metadata: metadata || {},
-    });
+  await supabase.from("transaction_status_history").insert({
+    transaction_id: transactionId,
+    status,
+    reason,
+    metadata: metadata || {},
+  });
 }
 
 /**
@@ -115,13 +118,13 @@ export async function getTransactionByPaymentIntent(
   const supabase = createClient();
 
   const { data, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('stripe_payment_intent_id', paymentIntentId)
+    .from("transactions")
+    .select("*")
+    .eq("stripe_payment_intent_id", paymentIntentId)
     .single();
 
   if (error) {
-    console.error('Error fetching transaction:', error);
+    console.error("Error fetching transaction:", error);
     return null;
   }
 
@@ -133,22 +136,22 @@ export async function getTransactionByPaymentIntent(
  */
 export async function getUserTransactions(
   userId: string,
-  role: 'buyer' | 'seller' | 'both' = 'both',
+  role: "buyer" | "seller" | "both" = "both",
   limit = 20,
   offset = 0
 ): Promise<TransactionWithDetails[]> {
   const supabase = createClient();
 
   let query = supabase
-    .from('transaction_summary')
-    .select('*')
-    .order('created_at', { ascending: false })
+    .from("transaction_summary")
+    .select("*")
+    .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (role === 'buyer') {
-    query = query.eq('buyer_id', userId);
-  } else if (role === 'seller') {
-    query = query.eq('seller_id', userId);
+  if (role === "buyer") {
+    query = query.eq("buyer_id", userId);
+  } else if (role === "seller") {
+    query = query.eq("seller_id", userId);
   } else {
     query = query.or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
   }
@@ -156,7 +159,7 @@ export async function getUserTransactions(
   const { data, error } = await query;
 
   if (error) {
-    console.error('Error fetching user transactions:', error);
+    console.error("Error fetching user transactions:", error);
     return [];
   }
 
@@ -172,13 +175,13 @@ export async function getTransactionDetails(
   const supabase = createClient();
 
   const { data, error } = await supabase
-    .from('transaction_summary')
-    .select('*')
-    .eq('id', transactionId)
+    .from("transaction_summary")
+    .select("*")
+    .eq("id", transactionId)
     .single();
 
   if (error) {
-    console.error('Error fetching transaction details:', error);
+    console.error("Error fetching transaction details:", error);
     return null;
   }
 
@@ -197,13 +200,13 @@ export async function getSellerStats(sellerId: string): Promise<{
   const supabase = createClient();
 
   const { data, error } = await supabase
-    .from('transactions')
-    .select('amount, seller_amount, platform_fee')
-    .eq('seller_id', sellerId)
-    .eq('status', 'succeeded');
+    .from("transactions")
+    .select("amount, seller_amount, platform_fee")
+    .eq("seller_id", sellerId)
+    .eq("status", "succeeded");
 
   if (error) {
-    console.error('Error fetching seller stats:', error);
+    console.error("Error fetching seller stats:", error);
     return null;
   }
 
@@ -242,9 +245,9 @@ export async function isWebhookProcessed(eventId: string): Promise<boolean> {
   const supabase = createClient();
 
   const { data } = await supabase
-    .from('webhook_events')
-    .select('processed')
-    .eq('stripe_event_id', eventId)
+    .from("webhook_events")
+    .select("processed")
+    .eq("stripe_event_id", eventId)
     .single();
 
   return data?.processed || false;
@@ -262,13 +265,11 @@ export async function recordWebhookEvent(
 ): Promise<void> {
   const supabase = createClient();
 
-  await supabase
-    .from('webhook_events')
-    .upsert({
-      stripe_event_id: eventId,
-      type,
-      payload,
-      processed,
-      error,
-    });
+  await supabase.from("webhook_events").upsert({
+    stripe_event_id: eventId,
+    type,
+    payload,
+    processed,
+    error,
+  });
 }

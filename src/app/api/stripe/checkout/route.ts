@@ -89,20 +89,9 @@ export async function POST(request: NextRequest) {
       cancelUrl
     );
 
-    // Create initial transaction record
-    const paymentIntent = session.payment_intent as string;
-    await createTransaction({
-      stripe_payment_intent_id: paymentIntent,
-      post_id: post.id,
-      buyer_id: user.id,
-      seller_id: post.seller_id,
-      seller_stripe_account_id: post.seller_stripe_account_id,
-      amount: session.amount_total || 0,
-      status: "pending",
-      metadata: {
-        session_id: session.id,
-      },
-    });
+    // Don't create transaction here - let the webhook handle it
+    // The session might not have a payment_intent immediately
+    console.log("Checkout session created:", session.id);
 
     return NextResponse.json({
       sessionId: session.id,

@@ -4,20 +4,23 @@ import { headers } from "next/headers";
 import { stripe } from "@/lib/stripe/client";
 import {
   updateTransactionStatus,
+  createTransaction,
   getTransactionByPaymentIntent,
   isWebhookProcessed,
   recordWebhookEvent,
 } from "@/lib/payments";
 import { updateAccountStatus } from "@/lib/stripe/connect";
-import { createClient } from "@/lib/server";
+import { createClient } from "@/lib/supabase";
 import Stripe from "stripe";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
-
+if (!webhookSecret) {
+  throw new Error("STRIPE_WEBHOOK_SECRET is not set");
+}
 export async function POST(request: NextRequest) {
   const body = await request.text();
-  const headersList = await headers(); // Add await here
-  const signature = headersList.get("stripe-signature")!; // Now get from headersList
+  const headersList = await headers();
+  const signature = headersList.get("stripe-signature")!;
 
   let event: Stripe.Event;
 
@@ -41,6 +44,13 @@ export async function POST(request: NextRequest) {
 
     // Handle different event types
     switch (event.type) {
+      // ADD THIS CASE - IT'S MISSING IN YOUR CODE!
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await handleCheckoutSessionCompleted(session);
+        break;
+      }
+
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         await handlePaymentIntentSucceeded(paymentIntent);
@@ -107,6 +117,75 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Handler for checkout session completed
+async function handleCheckoutSessionCompleted(
+  session: Stripe.Checkout.Session
+) {
+  console.log("Checkout session completed:", session.id);
+
+  if (!session.payment_intent) {
+    console.error("No payment intent in session");
+    return;
+  }
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent.id;
+
+  // Check if transaction already exists
+  const existingTransaction = await getTransactionByPaymentIntent(
+    paymentIntentId
+  );
+  if (existingTransaction) {
+    console.log(
+      "Transaction already exists for payment intent:",
+      paymentIntentId
+    );
+    return;
+  }
+
+  // Create transaction from session metadata
+  const metadata = session.metadata || {};
+
+  if (!metadata.post_id || !metadata.buyer_id || !metadata.seller_id) {
+    console.error("Missing required metadata in session:", metadata);
+    return;
+  }
+
+  // Get the seller's stripe account ID from the payment intent
+  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  const sellerAccountId = paymentIntent.transfer_data?.destination as string;
+
+  if (!sellerAccountId) {
+    console.error("No seller account ID in payment intent");
+    return;
+  }
+
+  // Create the transaction
+  const transaction = await createTransaction({
+    stripe_payment_intent_id: paymentIntentId,
+    post_id: metadata.post_id,
+    buyer_id: metadata.buyer_id,
+    seller_id: metadata.seller_id,
+    seller_stripe_account_id: sellerAccountId,
+    amount: session.amount_total || 0,
+    currency: session.currency || "usd",
+    status: "processing",
+    metadata: {
+      session_id: session.id,
+      customer_email: session.customer_email,
+      payment_method_type: session.payment_method_types?.[0],
+    },
+  });
+
+  if (transaction) {
+    console.log("Transaction created successfully:", transaction.id);
+  } else {
+    console.error("Failed to create transaction for session:", session.id);
+  }
+}
+
 async function handlePaymentIntentSucceeded(
   paymentIntent: Stripe.PaymentIntent
 ) {
@@ -122,14 +201,15 @@ async function handlePaymentIntentSucceeded(
   }
 
   await updateTransactionStatus(transaction.id, "succeeded", {
+    stripe_charge_id: paymentIntent.latest_charge as string,
+    payment_method_type: paymentIntent.payment_method_types[0],
     metadata: {
       payment_method: paymentIntent.payment_method_types[0],
       processed_at: new Date().toISOString(),
     },
   });
 
-  // Send confirmation email to buyer
-  // You can integrate with your email service here
+  console.log("Transaction status updated to succeeded:", transaction.id);
 }
 
 async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
@@ -226,7 +306,7 @@ async function handlePayoutEvent(payout: Stripe.Payout, eventType: string) {
       status = payout.status;
   }
 
-  // Get the connected account ID (using 'destination' instead of 'account')
+  // Get the connected account ID
   const stripeAccountId = payout.destination as string;
 
   // Get seller ID from account
