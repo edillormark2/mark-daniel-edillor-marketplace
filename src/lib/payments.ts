@@ -5,7 +5,6 @@ import {
   Transaction,
   TransactionStatus,
   TransactionWithDetails,
-  TransactionStatusHistory,
 } from "@/lib/types";
 import {
   calculatePlatformFee,

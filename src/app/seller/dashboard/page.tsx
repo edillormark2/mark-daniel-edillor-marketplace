@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import TransactionHistory from "@/components/payments/TransactionHistory";
 import { createClient } from "@/lib/supabase";
 import { SellerAccount } from "@/lib/types";
 import {
@@ -175,9 +174,6 @@ export default function SellerDashboardPage() {
               )}
             </div>
           )}
-
-          {/* Transaction History */}
-          <TransactionHistory role="seller" />
         </div>
       </div>
     </ProtectedRoute>

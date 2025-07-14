@@ -11,7 +11,7 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 // Platform configuration
-export const PLATFORM_FEE_PERCENTAGE = 50; // 10% platform fee
+export const PLATFORM_FEE_PERCENTAGE = 10; // 10% platform fee
 
 // Helper to calculate platform fee
 export function calculatePlatformFee(amount: number): number {

@@ -262,3 +262,4 @@ export interface TransactionWithDetails extends Transaction {
   seller_email?: string;
   seller_charges_enabled?: boolean;
 }
+
