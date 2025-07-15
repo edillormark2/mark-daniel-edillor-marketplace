@@ -16,7 +16,7 @@ const FilterButton: React.FC<FilterButtonProps> = ({
     <button
       onClick={onClick}
       className={`
-        lg:hidden fixed bottom-6 right-6 z-30 p-4 rounded-full shadow-lg transition-all duration-200
+        lg:hidden fixed bottom-24 right-6 z-30 p-4 rounded-full shadow-lg transition-all duration-200
         ${
           hasActiveFilters
             ? "bg-blue-600 text-white"

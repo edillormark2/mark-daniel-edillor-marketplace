@@ -1,3 +1,4 @@
+// src/lib/posts.ts
 import { supabase } from "./supabase";
 import { Post, PostFormData } from "./types";
 
@@ -259,6 +260,42 @@ export class PostService {
       return { data: counts, error: null };
     } catch (error) {
       return { data: {}, error: "Failed to get category counts" };
+    }
+  }
+  static async getPostsByCategory(category: string, limit = 5) {
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("main_category", category)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      return {
+        data: [],
+        error: error instanceof Error ? error.message : "Failed to fetch posts",
+      };
+    }
+  }
+
+  static async getRecentPosts(limit = 5) {
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      return {
+        data: [],
+        error: error instanceof Error ? error.message : "Failed to fetch posts",
+      };
     }
   }
 

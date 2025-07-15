@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Header from "@/components/ui/Header";
+import ChatButton from "@/components/ai-chat/ChatButton";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,7 +23,7 @@ export default function RootLayout({
       <body className={inter.className} suppressHydrationWarning>
         <AuthProvider>
           {/* Fixed Header */}
-          <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
+          <div className="fixed top-0 left-0 right-0 z-50 bg-white">
             <Header />
           </div>
 
@@ -46,6 +47,7 @@ export default function RootLayout({
               duration: 4000,
             }}
           />
+          <ChatButton />
         </AuthProvider>
       </body>
     </html>

@@ -263,3 +263,22 @@ export interface TransactionWithDetails extends Transaction {
   seller_charges_enabled?: boolean;
 }
 
+// Add these to your existing types.ts file
+
+export interface ChatSession {
+  id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+}
+
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  user_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+  metadata?: Record<string, any>;
+}
