@@ -95,7 +95,8 @@ export default function CheckoutButton({
   `;
 
   const variants = {
-    primary: "bg-green-600 text-white hover:bg-green-700 active:bg-green-800",
+    primary:
+      "bg-green-600 text-white hover:bg-green-700 active:bg-green-800 cursor-pointer",
     danger: "bg-red-600 text-white hover:bg-red-700",
   };
 

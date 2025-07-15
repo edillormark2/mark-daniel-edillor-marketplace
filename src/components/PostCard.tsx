@@ -19,7 +19,7 @@ export default function PostCard({ post, onCardClick }: PostCardProps) {
 
   return (
     <div
-      className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+      className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer h-full flex flex-col"
       onClick={handleClick}
     >
       {/* Photo */}
