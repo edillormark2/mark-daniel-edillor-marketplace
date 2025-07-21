@@ -146,14 +146,6 @@ export default function PostDetailView({ post }: PostDetailViewProps) {
     <div className="max-w-7xl mx-auto p-4 md:p-6">
       {/* Header with back button and share */}
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={handleBackClick}
-          className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5 mr-2" />
-          Back
-        </button>
-
         <div className="relative">
           <button
             onClick={handleShare}

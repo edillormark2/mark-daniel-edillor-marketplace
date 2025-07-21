@@ -8,6 +8,7 @@ import ChatInput from "./ChatInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import Avatar from "@/components/ui/Avatar";
+import Link from "next/link";
 
 interface ChatPopupProps {
   onClose: () => void;
@@ -268,11 +269,21 @@ export default function ChatPopup({ onClose }: ChatPopupProps) {
         ) : messages.length === 0 ? (
           <div className="text-center text-gray-500 mt-8">
             <MessageCircle className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-            <p className="text-sm">
-              {user
-                ? "Hi! How can I help you today?"
-                : "Please sign in to use the chat assistant."}
-            </p>
+            <div className="text-sm">
+              {user ? (
+                "Hi! How can I help you today?"
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <span>Please sign in to use the chat assistant.</span>
+                  <Link
+                    href="/auth"
+                    className="text-sm px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                  >
+                    Sign In
+                  </Link>
+                </div>
+              )}
+            </div>
             {user && (
               <div className="mt-4 space-y-2">
                 <button

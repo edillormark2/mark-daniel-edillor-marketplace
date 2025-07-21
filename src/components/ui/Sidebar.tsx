@@ -1,4 +1,3 @@
-// src/components/ui/Sidebar.tsx
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -60,23 +59,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [categoryCounts, setCategoryCounts] = useState<CategoryCounts>({});
   const [isLoadingCounts, setIsLoadingCounts] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // Auto-close sidebar on mobile when window is resized to desktop
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024 && isOpen) {
-        // Close sidebar on mobile when resizing to desktop
-        const isMobile = window.innerWidth < 1024;
-        if (!isMobile && isOpen) {
-          // This prevents auto-closing when going from mobile to desktop
-          return;
-        }
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [isOpen]);
 
   // Close sidebar when clicking on filter options (mobile only)
   const closeSidebarOnMobile = useCallback(() => {

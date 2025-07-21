@@ -10,16 +10,68 @@ import Sidebar from "@/components/ui/Sidebar";
 import Header from "@/components/ui/Header";
 import { FileText, TextSearch } from "lucide-react";
 
+// Custom hook for sidebar state management with localStorage
+const useSidebarState = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Initialize sidebar state from localStorage
+  useEffect(() => {
+    try {
+      const savedState = localStorage.getItem("sidebar-open");
+      if (savedState !== null) {
+        setIsSidebarOpen(JSON.parse(savedState));
+      }
+    } catch (error) {
+      console.error("Error loading sidebar state from localStorage:", error);
+    }
+  }, []);
+
+  // Save sidebar state to localStorage whenever it changes
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarOpen((prev) => {
+      const newState = !prev;
+      try {
+        localStorage.setItem("sidebar-open", JSON.stringify(newState));
+      } catch (error) {
+        console.error("Error saving sidebar state to localStorage:", error);
+      }
+      return newState;
+    });
+  }, []);
+
+  // Handle mobile screen size changes
+  useEffect(() => {
+    const handleResize = () => {
+      // Close sidebar and update localStorage when screen becomes mobile size
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+        try {
+          localStorage.setItem("sidebar-open", JSON.stringify(false));
+        } catch (error) {
+          console.error("Error saving sidebar state to localStorage:", error);
+        }
+      }
+    };
+
+    // Check screen size on mount and set up resize listener
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  return { isSidebarOpen, toggleSidebar };
+};
+
 export default function HomePage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentFilters, setCurrentFilters] = useState<PostFilters>({});
+
+  // Use the custom hook for sidebar state management
+  const { isSidebarOpen, toggleSidebar } = useSidebarState();
 
   // Load all posts initially
   useEffect(() => {
@@ -61,36 +113,6 @@ export default function HomePage() {
       setIsFiltering(false);
     }
   }, []);
-
-  // Handle post card click
-  const handleCardClick = (post: Post) => {
-    setSelectedPost(post);
-    setIsModalOpen(true);
-  };
-
-  // Handle modal close
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedPost(null);
-  };
-
-  // Toggle sidebar
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  // Auto-close sidebar on mobile when clicking outside or when screen size changes
-  useEffect(() => {
-    const handleResize = () => {
-      // Close sidebar on mobile when screen gets smaller
-      if (window.innerWidth < 1024 && isSidebarOpen) {
-        setIsSidebarOpen(false);
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [isSidebarOpen]);
 
   // Check if there are active filters
   const hasActiveFilters =
@@ -171,9 +193,8 @@ export default function HomePage() {
               isSidebarOpen ? "lg:ml-80" : "lg:ml-0"
             }`}
           >
-            {/* Centered Container with Margins */}
-
-            <div className="flex flex-col max-w-[85%] mx-auto ">
+            {/* Centered Container */}
+            <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
               {/* Header */}
               <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -279,13 +300,9 @@ export default function HomePage() {
                       </div>
 
                       {/* Posts Grid - Centered and Responsive */}
-                      <div className="flex flex-wrap gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                         {filteredPosts.map((post) => (
-                          <PostCard
-                            key={post.id}
-                            post={post}
-                            onCardClick={handleCardClick}
-                          />
+                          <PostCard key={post.id} post={post} />
                         ))}
                       </div>
                     </>
