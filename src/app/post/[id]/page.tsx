@@ -5,7 +5,7 @@ import PostDetailView from "@/components/PostDetailView";
 import Header from "@/components/ui/Header";
 
 interface PostPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 async function getPost(id: string) {
@@ -25,7 +25,8 @@ async function getPost(id: string) {
 }
 
 export default async function PostPage({ params }: PostPageProps) {
-  const post = await getPost(params.id);
+  const { id } = await params;
+  const post = await getPost(id);
 
   if (!post) {
     notFound();
@@ -42,7 +43,8 @@ export default async function PostPage({ params }: PostPageProps) {
 }
 
 export async function generateMetadata({ params }: PostPageProps) {
-  const post = await getPost(params.id);
+  const { id } = await params;
+  const post = await getPost(id);
 
   if (!post) {
     return {
