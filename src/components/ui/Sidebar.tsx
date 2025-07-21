@@ -61,6 +61,30 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [isLoadingCounts, setIsLoadingCounts] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-close sidebar on mobile when window is resized to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024 && isOpen) {
+        // Close sidebar on mobile when resizing to desktop
+        const isMobile = window.innerWidth < 1024;
+        if (!isMobile && isOpen) {
+          // This prevents auto-closing when going from mobile to desktop
+          return;
+        }
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isOpen]);
+
+  // Close sidebar when clicking on filter options (mobile only)
+  const closeSidebarOnMobile = useCallback(() => {
+    if (window.innerWidth < 1024) {
+      onToggle();
+    }
+  }, [onToggle]);
+
   // Update filters and notify parent - MOVED TO TOP
   const updateFilters = useCallback(
     (newFilters: Partial<PostFilters> = {}) => {
@@ -161,6 +185,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       setSelectedSubcategory("");
       setExpandedCategories((prev) => new Set(prev).add(category));
     }
+    closeSidebarOnMobile();
   };
 
   // Handle subcategory selection
@@ -168,11 +193,13 @@ const Sidebar: React.FC<SidebarProps> = ({
     setSelectedSubcategory(
       selectedSubcategory === subcategory ? "" : subcategory
     );
+    closeSidebarOnMobile();
   };
 
   // Handle campus selection
   const handleCampusSelect = (campus: string) => {
     setSelectedCampus(selectedCampus === campus ? "" : campus);
+    closeSidebarOnMobile();
   };
 
   // Handle search input with better UX
@@ -220,7 +247,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       minPrice: undefined,
       maxPrice: undefined,
     });
-  }, [updateFilters]);
+    closeSidebarOnMobile();
+  }, [updateFilters, closeSidebarOnMobile]);
 
   // Validate price inputs
   const validatePrice = (value: string): string => {
@@ -287,8 +315,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Sidebar */}
       <div
         className={`
-        fixed lg:fixed inset-y-0 left-0 z-40 w-80 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
-        ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        fixed inset-y-0 left-0 z-40 w-80 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}
         lg:shadow-none lg:border-r lg:border-gray-200
         pt-16 /* Add padding-top to account for fixed header */
       `}
@@ -313,13 +341,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                   title="Refresh category counts"
                 >
                   <RefreshCw className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={onToggle}
-                  className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                  aria-label="Close sidebar"
-                >
-                  <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -467,6 +488,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     value={minPrice}
                     onChange={(e) => handlePriceChange("min", e.target.value)}
                     className="w-full text-black px-3 py-2 border border-gray-300 rounded-lg "
+                    onBlur={closeSidebarOnMobile}
                   />
                 </div>
                 <div>
@@ -485,6 +507,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     value={maxPrice}
                     onChange={(e) => handlePriceChange("max", e.target.value)}
                     className="w-full px-3 py-2  text-black border border-gray-300 rounded-lg"
+                    onBlur={closeSidebarOnMobile}
                   />
                 </div>
               </div>
