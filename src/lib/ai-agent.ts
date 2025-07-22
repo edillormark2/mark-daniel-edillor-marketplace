@@ -18,7 +18,7 @@ const geminiModel = genAI.getGenerativeModel({
     temperature: 0.7,
     topK: 1,
     topP: 1,
-    maxOutputTokens: 1024,
+    maxOutputTokens: 2048, // Increased for richer responses
   },
 });
 
@@ -50,6 +50,7 @@ export interface MarketplaceContext {
   popularCategories?: string[];
   totalPosts?: number;
   universityPosts?: Post[];
+  allRecentPosts?: Post[]; // Added for global marketplace view
 }
 
 export interface ChatContext {
@@ -57,6 +58,13 @@ export interface ChatContext {
   userInfo?: UserContext;
   marketplaceInfo?: MarketplaceContext;
   sessionId?: string;
+}
+
+// Enhanced post details interface
+export interface EnhancedPost extends Post {
+  imageUrls?: string[];
+  formattedDate?: string;
+  postUrl?: string;
 }
 
 export class AIAgent {
@@ -124,20 +132,20 @@ export class AIAgent {
     }
   }
 
-  // Get comprehensive marketplace context
+  // Get comprehensive marketplace context (ENHANCED)
   private static async getMarketplaceContext(
     userUniversity?: string
   ): Promise<MarketplaceContext> {
     try {
-      // Get all recent posts
-      const { data: recentPosts, error: recentError } = await supabase
+      // Get ALL recent posts (not just user's university)
+      const { data: allRecentPosts, error: allRecentError } = await supabase
         .from("posts")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(20); // Increased limit for better context
 
-      if (recentError) {
-        console.error("Error fetching recent posts:", recentError);
+      if (allRecentError) {
+        console.error("Error fetching all recent posts:", allRecentError);
       }
 
       // Get posts count by category
@@ -180,7 +188,8 @@ export class AIAgent {
         categories: [...MAIN_CATEGORIES],
         subcategories: SUB_CATEGORIES as Record<string, readonly string[]>,
         campuses: [...CAMPUS_LIST],
-        recentPosts: recentPosts || [],
+        recentPosts: universityPosts, // User's university posts
+        allRecentPosts: allRecentPosts || [], // All marketplace posts
         popularCategories,
         totalPosts: allPosts?.length || 0,
         universityPosts,
@@ -192,6 +201,7 @@ export class AIAgent {
         subcategories: SUB_CATEGORIES as Record<string, readonly string[]>,
         campuses: [...CAMPUS_LIST],
         recentPosts: [],
+        allRecentPosts: [],
         popularCategories: [],
         totalPosts: 0,
         universityPosts: [],
@@ -199,7 +209,35 @@ export class AIAgent {
     }
   }
 
-  // Generate comprehensive system prompt
+  // Enhance posts with image URLs and formatted data
+  private static async enhancePosts(posts: Post[]): Promise<EnhancedPost[]> {
+    return posts.map((post) => {
+      const enhancedPost: EnhancedPost = {
+        ...post,
+        formattedDate: new Date(post.created_at).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+        postUrl: `/post/${post.id}`,
+        imageUrls: [],
+      };
+
+      // Generate image URLs from Supabase storage
+      if (post.photos && post.photos.length > 0) {
+        enhancedPost.imageUrls = post.photos.map((photo) => {
+          const { data } = supabase.storage
+            .from("post-photos")
+            .getPublicUrl(photo);
+          return data.publicUrl;
+        });
+      }
+
+      return enhancedPost;
+    });
+  }
+
+  // Generate comprehensive system prompt (ENHANCED)
   private static async getSystemPrompt(context: ChatContext): Promise<string> {
     let userContext = context.userInfo;
 
@@ -218,9 +256,18 @@ export class AIAgent {
 IMPORTANT RULES:
 1. ONLY suggest items that actually exist in our database
 2. When users ask about posts/items, search the database first
-3. Provide specific, relevant suggestions based on user's university when possible
-4. Never make up listings or information
-5. Be helpful and conversational while staying factual
+3. You can search ACROSS ALL UNIVERSITIES, not just the user's campus
+4. When showing posts, ALWAYS include:
+   - Title and description
+   - Price (or "Free" if no price)
+   - Campus/University location
+   - Date posted
+   - Direct link to view the post (MUST use actual post ID, not placeholders)
+   - Mention if there are photos available
+5. Format post links as clickable: [View Post](/post/{actual_post_id}) - NEVER use {post_id} placeholder
+6. Be helpful and conversational while staying factual
+7. If a user asks for items from other universities, search the entire marketplace
+8. When you find posts, use the EXACT format provided by the search results, including the actual post ID
 
 ${
   userContext
@@ -230,30 +277,33 @@ ${
 - Email: ${userContext.email}
 - Member since: ${new Date(userContext.created_at).toLocaleDateString()}
 - Posts created: ${userContext.postsCount || 0}
-- University marketplace items: ${userContext.universityPostsCount || 0}
+- Items at your university: ${userContext.universityPostsCount || 0}
 `
     : ""
 }
 
-MARKETPLACE STATUS:
-- Total posts in database: ${marketplaceContext.totalPosts}
+MARKETPLACE STATISTICS:
+- Total posts in marketplace: ${marketplaceContext.totalPosts}
+- Active universities: ${marketplaceContext.campuses.length}
 - Popular categories: ${
       marketplaceContext.popularCategories?.join(", ") || "None"
     }
 - Available categories: ${marketplaceContext.categories.join(", ")}
-- Supported campuses: ${marketplaceContext.campuses.join(", ")}
 
 ${
-  marketplaceContext.recentPosts && marketplaceContext.recentPosts.length > 0
+  marketplaceContext.allRecentPosts &&
+  marketplaceContext.allRecentPosts.length > 0
     ? `
-RECENT MARKETPLACE ACTIVITY:
-${marketplaceContext.recentPosts
+RECENT MARKETPLACE ACTIVITY (ALL CAMPUSES):
+${marketplaceContext.allRecentPosts
   .slice(0, 5)
   .map(
     (post) =>
       `- "${post.title}" (${post.main_category}) - ${
         post.price ? `$${post.price}` : "Free"
-      } - ${post.campus}`
+      } - ${post.campus} - Posted ${new Date(
+        post.created_at
+      ).toLocaleDateString()}`
   )
   .join("\n")}
 `
@@ -265,31 +315,32 @@ ${
   marketplaceContext.universityPosts &&
   marketplaceContext.universityPosts.length > 0
     ? `
-RECENT POSTS AT YOUR UNIVERSITY (${userContext.university}):
+RECENT POSTS AT ${userContext.university}:
 ${marketplaceContext.universityPosts
   .slice(0, 5)
   .map(
     (post) =>
       `- "${post.title}" (${post.main_category}) - ${
         post.price ? `$${post.price}` : "Free"
-      }`
+      } - Posted ${new Date(post.created_at).toLocaleDateString()}`
   )
   .join("\n")}
 `
     : ""
 }
 
-When users ask about specific items or categories, search the database and provide accurate, helpful responses based on what's actually available.`;
+When users ask about specific items or categories, search the ENTIRE database (all universities) unless they specifically ask for their campus only. Always provide rich, detailed responses with all relevant information including direct links to view posts.`;
 
     return systemPrompt;
   }
 
-  // Search for relevant posts based on user query
+  // Enhanced search for relevant posts (UPDATED)
   static async searchRelevantPosts(
     query: string,
     userUniversity?: string,
-    filters: Record<string, any> = {}
-  ): Promise<Post[]> {
+    filters: Record<string, any> = {},
+    searchAllCampuses: boolean = true // New parameter
+  ): Promise<EnhancedPost[]> {
     try {
       // Start with base query
       let supabaseQuery = supabase
@@ -316,12 +367,10 @@ When users ask about specific items or categories, search the database and provi
         supabaseQuery = supabaseQuery.eq("sub_category", filters.sub_category);
       }
 
+      // Only filter by campus if explicitly requested or if searchAllCampuses is false
       if (filters.campus) {
         supabaseQuery = supabaseQuery.eq("campus", filters.campus);
-      }
-
-      // Prioritize user's university if available
-      if (userUniversity && !filters.campus) {
+      } else if (!searchAllCampuses && userUniversity) {
         supabaseQuery = supabaseQuery.eq("campus", userUniversity);
       }
 
@@ -333,25 +382,40 @@ When users ask about specific items or categories, search the database and provi
         supabaseQuery = supabaseQuery.lte("price", filters.maxPrice);
       }
 
-      const { data, error } = await supabaseQuery.limit(10);
+      const { data, error } = await supabaseQuery.limit(20); // Increased limit
 
       if (error) {
         console.error("Error searching posts:", error);
         return [];
       }
 
-      return data || [];
+      // Enhance posts with additional data
+      return await this.enhancePosts(data || []);
     } catch (error) {
       console.error("Error in searchRelevantPosts:", error);
       return [];
     }
   }
 
-  // Extract search intent from user message
+  // Enhanced search intent extraction
   static extractSearchIntent(
     message: string
-  ): { query: string; category?: string } | null {
+  ): { query: string; category?: string; searchAllCampuses?: boolean } | null {
     const lowerMessage = message.toLowerCase();
+
+    // Check if user wants to search all campuses
+    const searchAllCampuses =
+      lowerMessage.includes("all campus") ||
+      lowerMessage.includes("all universities") ||
+      lowerMessage.includes("everywhere") ||
+      lowerMessage.includes("any campus") ||
+      lowerMessage.includes("other universities");
+
+    // Check for campus-specific search
+    const myCampusOnly =
+      lowerMessage.includes("my campus") ||
+      lowerMessage.includes("my university") ||
+      lowerMessage.includes("at my school");
 
     // Check for explicit search patterns
     const searchPatterns = [
@@ -371,7 +435,11 @@ When users ask about specific items or categories, search the database and provi
           query.toLowerCase().includes(cat.toLowerCase())
         );
 
-        return { query, category };
+        return {
+          query,
+          category,
+          searchAllCampuses: searchAllCampuses || !myCampusOnly,
+        };
       }
     }
 
@@ -381,7 +449,11 @@ When users ask about specific items or categories, search the database and provi
     );
 
     if (category) {
-      return { query: category, category };
+      return {
+        query: category,
+        category,
+        searchAllCampuses: searchAllCampuses || !myCampusOnly,
+      };
     }
 
     // Check for subcategory mentions
@@ -390,14 +462,40 @@ When users ask about specific items or categories, search the database and provi
         lowerMessage.includes(sub.toLowerCase())
       );
       if (subCategory) {
-        return { query: subCategory, category: mainCat };
+        return {
+          query: subCategory,
+          category: mainCat,
+          searchAllCampuses: searchAllCampuses || !myCampusOnly,
+        };
       }
     }
 
     return null;
   }
 
-  // Process user message and generate response
+  // Format post for display (NEW METHOD)
+  private static formatPostForDisplay(post: EnhancedPost): string {
+    const priceDisplay = post.price ? `${post.price}` : "Free";
+    const hasPhotos = post.photos && post.photos.length > 0;
+    const description = post.description || "No description provided";
+
+    return `📦 **${post.title}**
+💰 Price: ${priceDisplay}
+📍 Campus: ${post.campus}
+📅 Posted: ${post.formattedDate}
+${
+  hasPhotos
+    ? `📷 ${post.photos.length} photo${
+        post.photos.length > 1 ? "s" : ""
+      } available`
+    : "📷 No photos available"
+}
+📝 ${description.substring(0, 150)}${description.length > 150 ? "..." : ""}
+
+🔗 [View Full Details](/post/${post.id}) ↗️`;
+  }
+
+  // Enhanced process message (UPDATED)
   static async processMessage(
     userMessage: string,
     context: ChatContext
@@ -409,45 +507,117 @@ When users ask about specific items or categories, search the database and provi
         userContext = await this.getUserContext(context.userInfo.id);
       }
 
-      // Check if this is a search query
+      // Check if this is a search query (expanded detection)
       const searchIntent = this.extractSearchIntent(userMessage);
 
-      if (searchIntent) {
+      // Also check for general item mentions even without explicit search keywords
+      const lowerMessage = userMessage.toLowerCase();
+      const mightBeSearching =
+        searchIntent ||
+        lowerMessage.includes("bike") ||
+        lowerMessage.includes("laptop") ||
+        lowerMessage.includes("book") ||
+        lowerMessage.includes("furniture") ||
+        lowerMessage.includes("electronics") ||
+        lowerMessage.includes("textbook") ||
+        lowerMessage.includes("item") ||
+        lowerMessage.includes("post") ||
+        lowerMessage.includes("listing");
+
+      if (mightBeSearching) {
         const filters: Record<string, any> = {};
 
-        if (searchIntent.category) {
-          filters.main_category = searchIntent.category;
+        // Extract search term from message if no explicit search intent
+        let searchQuery = "";
+        if (searchIntent) {
+          searchQuery = searchIntent.query;
+          if (searchIntent.category) {
+            filters.main_category = searchIntent.category;
+          }
+        } else {
+          // Try to extract item name from message
+          const words = lowerMessage.split(/\s+/);
+          const itemKeywords = [
+            "bike",
+            "laptop",
+            "book",
+            "furniture",
+            "electronics",
+            "textbook",
+            "phone",
+            "desk",
+            "chair",
+          ];
+          searchQuery = words.find((word) => itemKeywords.includes(word)) || "";
         }
 
         const posts = await this.searchRelevantPosts(
-          searchIntent.query,
+          searchQuery,
           userContext?.university,
-          filters
+          filters,
+          searchIntent?.searchAllCampuses !== false
+        );
+
+        // Debug log to verify data
+        console.log(
+          "Search results:",
+          posts.slice(0, 2).map((p) => ({
+            id: p.id,
+            title: p.title,
+            link: `/post/${p.id}`,
+          }))
         );
 
         if (posts.length > 0) {
+          const searchScope =
+            searchIntent?.searchAllCampuses === false
+              ? ` at ${userContext?.university}`
+              : " across all campuses";
+
+          // Format all posts with their actual IDs
+          const formattedPosts = posts.slice(0, 5).map((post) => ({
+            id: post.id,
+            title: post.title,
+            description: post.description || "No description provided",
+            price: post.price,
+            campus: post.campus,
+            created_at: post.created_at,
+            photos: post.photos,
+            formattedDate: post.formattedDate,
+            link: `/post/${post.id}`, // Actual ID
+          }));
+
+          // Create a detailed response with actual post data
           const listings = posts
             .slice(0, 5)
-            .map(
-              (post) =>
-                `• "${post.title}" (${post.main_category}) - ${
-                  post.price ? `$${post.price}` : "Free"
-                } - ${post.campus}\n  ${post.description.substring(0, 100)}...`
-            )
-            .join("\n\n");
+            .map((post) => this.formatPostForDisplay(post))
+            .join("\n\n---\n\n");
 
           return `I found ${posts.length} matching item${
             posts.length > 1 ? "s" : ""
-          } in our marketplace:\n\n${listings}\n\n${
-            posts.length > 5 ? `And ${posts.length - 5} more items...` : ""
-          }Would you like more details about any of these items?`;
+          }${searchScope}:\n\n${listings}\n\n${
+            posts.length > 5
+              ? `📊 **And ${posts.length - 5} more items available!**\n\n`
+              : ""
+          }💡 **Tip:** Click on "View Full Details" to see photos and contact the seller. Would you like to refine your search or see items from ${
+            searchIntent?.searchAllCampuses === false
+              ? "other campuses"
+              : "your campus only"
+          }?`;
         } else {
-          // If no posts found, suggest creating one
-          return `I couldn't find any "${
-            searchIntent.query
-          }" items in our marketplace${
-            userContext?.university ? ` at ${userContext.university}` : ""
-          }. Would you like to create a new post to sell or request this item?`;
+          const searchScope =
+            searchIntent?.searchAllCampuses === false
+              ? ` at ${userContext?.university}`
+              : " in the entire marketplace";
+
+          return `I couldn't find any "${searchQuery}" items${searchScope}. 
+
+Would you like to:
+1. 🔍 Search all campuses? (if you haven't already)
+2. 📝 Create a new post to sell or request this item?
+3. 🔔 Set up an alert for when this item becomes available?
+
+Just let me know how I can help!`;
         }
       }
 
@@ -460,25 +630,21 @@ When users ask about specific items or categories, search the database and provi
           .order("created_at", { ascending: false });
 
         if (!error && userPosts && userPosts.length > 0) {
-          const postsList = userPosts
+          const enhancedUserPosts = await this.enhancePosts(userPosts);
+          const postsList = enhancedUserPosts
             .slice(0, 5)
-            .map(
-              (post) =>
-                `• "${post.title}" - Posted ${new Date(
-                  post.created_at
-                ).toLocaleDateString()}`
-            )
-            .join("\n");
+            .map((post) => this.formatPostForDisplay(post))
+            .join("\n\n---\n\n");
 
           return `You have ${userPosts.length} active listing${
             userPosts.length > 1 ? "s" : ""
           }:\n\n${postsList}${
             userPosts.length > 5
-              ? `\n\nAnd ${userPosts.length - 5} more...`
+              ? `\n\n📊 **And ${userPosts.length - 5} more listings...**`
               : ""
-          }`;
+          }\n\n💡 **Tip:** You can edit or delete your posts by clicking "View Full Details"`;
         } else {
-          return "You don't have any active listings yet. Would you like to create your first post?";
+          return "You don't have any active listings yet. Would you like to create your first post? I can guide you through the process!";
         }
       }
 
@@ -488,7 +654,28 @@ When users ask about specific items or categories, search the database and provi
         userInfo: userContext,
       });
 
+      // Get some recent posts to provide context
+      const recentPosts = await this.searchRelevantPosts(
+        "",
+        userContext?.university,
+        {},
+        true
+      );
+      const formattedRecentPosts = recentPosts.slice(0, 10).map((post) => ({
+        id: post.id,
+        title: post.title,
+        description: post.description || "No description provided",
+        price: post.price ? `${post.price}` : "Free",
+        campus: post.campus,
+        date: post.formattedDate,
+        photos_count: post.photos?.length || 0,
+        link: `/post/${post.id}`,
+      }));
+
       const fullPrompt = `${systemPrompt}
+
+RECENT POSTS DATA (for reference):
+${JSON.stringify(formattedRecentPosts, null, 2)}
 
 CONVERSATION HISTORY:
 ${context.messages
@@ -498,7 +685,13 @@ ${context.messages
 
 CURRENT USER QUERY: ${userMessage}
 
-Please provide a helpful response based on the actual data above. If the user is asking about items/posts, make sure to search the database first.`;
+IMPORTANT: When showing posts to users, you MUST:
+1. Use the ACTUAL post ID from the data, never use placeholders like {post_id}
+2. Format links as [View Post](/post/ACTUAL_ID_HERE)
+3. Include all relevant details from the post data
+4. If the user asks about specific items, search for them first
+
+Please provide a helpful response based on the actual data above.`;
 
       const result = await geminiModel.generateContent(fullPrompt);
       const response = await result.response;
@@ -511,13 +704,14 @@ Please provide a helpful response based on the actual data above. If the user is
     }
   }
 
-  // Sanitize AI response
+  // Enhanced sanitize response
   static sanitizeResponse(response: string): string {
     let sanitized = response.trim();
 
     // Limit response length
-    if (sanitized.length > 800) {
-      sanitized = sanitized.substring(0, 797) + "...";
+    if (sanitized.length > 1500) {
+      // Increased limit for richer responses
+      sanitized = sanitized.substring(0, 1497) + "...";
     }
 
     // Remove potentially harmful content
@@ -538,11 +732,12 @@ Please provide a helpful response based on the actual data above. If the user is
     return sanitized;
   }
 
-  // Get posts by category for context
+  // Get posts by category for context (ENHANCED)
   static async getPostsByCategory(
     category: string,
-    userUniversity?: string
-  ): Promise<Post[]> {
+    userUniversity?: string,
+    allCampuses: boolean = false
+  ): Promise<EnhancedPost[]> {
     try {
       let query = supabase
         .from("posts")
@@ -550,21 +745,82 @@ Please provide a helpful response based on the actual data above. If the user is
         .eq("main_category", category)
         .order("created_at", { ascending: false });
 
-      if (userUniversity) {
+      // Only filter by university if not searching all campuses
+      if (!allCampuses && userUniversity) {
         query = query.eq("campus", userUniversity);
       }
 
-      const { data, error } = await query.limit(10);
+      const { data, error } = await query.limit(20);
 
       if (error) {
         console.error("Error fetching posts by category:", error);
         return [];
       }
 
-      return data || [];
+      return await this.enhancePosts(data || []);
     } catch (error) {
       console.error("Error in getPostsByCategory:", error);
       return [];
+    }
+  }
+
+  // Get marketplace statistics (NEW METHOD)
+  static async getMarketplaceStats(): Promise<{
+    totalPosts: number;
+    activeCampuses: string[];
+    categoryBreakdown: Record<string, number>;
+    recentActivity: number;
+  }> {
+    try {
+      // Get total posts
+      const { count: totalPosts } = await supabase
+        .from("posts")
+        .select("*", { count: "exact", head: true });
+
+      // Get active campuses
+      const { data: campusData } = await supabase
+        .from("posts")
+        .select("campus")
+        .order("campus");
+
+      const activeCampuses = Array.from(
+        new Set(campusData?.map((p) => p.campus) || [])
+      );
+
+      // Get category breakdown
+      const { data: categoryData } = await supabase
+        .from("posts")
+        .select("main_category");
+
+      const categoryBreakdown =
+        categoryData?.reduce((acc, post) => {
+          acc[post.main_category] = (acc[post.main_category] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>) || {};
+
+      // Get recent activity (posts in last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const { count: recentActivity } = await supabase
+        .from("posts")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", sevenDaysAgo.toISOString());
+
+      return {
+        totalPosts: totalPosts || 0,
+        activeCampuses,
+        categoryBreakdown,
+        recentActivity: recentActivity || 0,
+      };
+    } catch (error) {
+      console.error("Error getting marketplace stats:", error);
+      return {
+        totalPosts: 0,
+        activeCampuses: [],
+        categoryBreakdown: {},
+        recentActivity: 0,
+      };
     }
   }
 }

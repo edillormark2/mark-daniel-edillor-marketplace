@@ -2,7 +2,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2, RotateCcw, MessageCircle, X } from "lucide-react";
+import {
+  Send,
+  Loader2,
+  RotateCcw,
+  MessageCircle,
+  X,
+  Sparkles,
+} from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import { useAuth } from "@/contexts/AuthContext";
@@ -38,11 +45,6 @@ export default function ChatPopup({ onClose }: ChatPopupProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Load chat history on mount
-  useEffect(() => {
-    loadChatHistory();
-  }, []);
 
   // Load user profile and chat history on mount
   useEffect(() => {
@@ -185,8 +187,6 @@ export default function ChatPopup({ onClose }: ChatPopupProps) {
           ? error.message
           : "Failed to send message. Please try again."
       );
-      // Optionally keep the user message even if there was an error
-      // setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
     } finally {
       setIsLoading(false);
     }
@@ -221,38 +221,86 @@ export default function ChatPopup({ onClose }: ChatPopupProps) {
     }
   };
 
+  // Enhanced starter suggestions
+  const starterSuggestions = user
+    ? [
+        {
+          emoji: "🔍",
+          text: "Find electronics across all campuses",
+          query: "Show me all electronics for sale across all universities",
+        },
+        {
+          emoji: "📚",
+          text: "Find textbooks at my university",
+          query: userProfile?.university
+            ? `Find textbooks for sale at ${userProfile.university}`
+            : "Find textbooks for sale at my campus",
+        },
+        {
+          emoji: "🏠",
+          text: "Search housing options everywhere",
+          query: "Show me all available housing options across all campuses",
+        },
+        {
+          emoji: "💼",
+          text: "Browse campus jobs",
+          query: "What campus jobs are available?",
+        },
+        {
+          emoji: "📱",
+          text: "Latest items for sale",
+          query: "Show me the most recent items posted for sale",
+        },
+        {
+          emoji: "📋",
+          text: "View my active listings",
+          query: "Show me my posts",
+        },
+      ]
+    : [];
+
   return (
-    <div className="fixed bottom-24 right-6 z-40 w-[400px] h-[550px] bg-white rounded-lg shadow-2xl flex flex-col overflow-hidden">
+    <div className="fixed bottom-24 right-6 z-40 w-[400px] h-[600px] bg-white rounded-lg shadow-2xl flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-blue-600 text-white p-4 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {user && (
-            <Avatar
-              email={user.email}
-              size="sm"
-              className="border-2 border-white/20"
-            />
-          )}
+          <div className="relative">
+            {user ? (
+              <Avatar
+                email={user.email}
+                size="sm"
+                className="border-2 border-white/20"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                <Sparkles className="w-4 h-4" />
+              </div>
+            )}
+          </div>
           <div>
-            <h3 className="font-semibold">Capmus Assistant</h3>
+            <h3 className="font-semibold flex items-center gap-1">
+              Campus Marketplace AI
+              <Sparkles className="w-4 h-4" />
+            </h3>
             <p className="text-xs opacity-90">
               {user
                 ? `Hi, ${userProfile?.full_name || user.email?.split("@")[0]}!`
-                : "Ask me anything!"}
+                : "Your marketplace assistant"}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleClearChat}
-            className="p-1 hover:bg-blue-700 rounded transition-colors"
+            className="p-1 hover:bg-blue-800/50 rounded transition-colors"
             aria-label="Clear chat"
+            title="Clear chat"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-blue-700 rounded transition-colors"
+            className="p-1 hover:bg-blue-800/50 rounded transition-colors"
             aria-label="Close chat"
           >
             <X className="w-5 h-5" />
@@ -261,7 +309,7 @@ export default function ChatPopup({ onClose }: ChatPopupProps) {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
         {isLoadingHistory ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
@@ -271,10 +319,18 @@ export default function ChatPopup({ onClose }: ChatPopupProps) {
             <MessageCircle className="w-12 h-12 mx-auto mb-3 text-gray-300" />
             <div className="text-sm">
               {user ? (
-                "Hi! How can I help you today?"
+                <>
+                  <p className="font-medium text-gray-700 mb-1">
+                    Welcome to Campus Marketplace AI! 🎯
+                  </p>
+                  <p className="text-xs text-gray-500 mb-4">
+                    I can help you find items across all campuses or just at{" "}
+                    {userProfile?.university || "your university"}
+                  </p>
+                </>
               ) : (
                 <div className="flex flex-col items-center gap-2">
-                  <span>Please sign in to use the chat assistant.</span>
+                  <span>Please sign in to use the marketplace assistant.</span>
                   <Link
                     href="/auth"
                     className="text-sm px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
@@ -284,26 +340,25 @@ export default function ChatPopup({ onClose }: ChatPopupProps) {
                 </div>
               )}
             </div>
-            {user && (
+            {user && starterSuggestions.length > 0 && (
               <div className="mt-4 space-y-2">
-                <button
-                  onClick={() => handleSendMessage("How do I post an item?")}
-                  className="block w-full text-left text-xs bg-gray-100 hover:bg-gray-200 p-2 rounded transition-colors"
-                >
-                  💡 How do I post an item?
-                </button>
-                <button
-                  onClick={() => handleSendMessage("Show me my recent posts")}
-                  className="block w-full text-left text-xs bg-gray-100 hover:bg-gray-200 p-2 rounded transition-colors"
-                >
-                  📋 Show me my recent posts
-                </button>
-                <button
-                  onClick={() => handleSendMessage("Find electronics for sale")}
-                  className="block w-full text-left text-xs bg-gray-100 hover:bg-gray-200 p-2 rounded transition-colors"
-                >
-                  🔍 Find electronics for sale
-                </button>
+                <p className="text-xs text-gray-500 mb-2">Try asking:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {starterSuggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSendMessage(suggestion.query)}
+                      className="text-left text-xs bg-white hover:bg-gray-100 p-3 rounded-lg transition-colors border border-gray-200 hover:border-gray-300 hover:shadow-sm"
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="text-lg">{suggestion.emoji}</span>
+                        <span className="flex-1 leading-tight text-gray-700">
+                          {suggestion.text}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -317,13 +372,15 @@ export default function ChatPopup({ onClose }: ChatPopupProps) {
               />
             ))}
             {isLoading && (
-              <div className="flex items-center gap-2 text-gray-500">
+              <div className="flex items-center gap-2 text-gray-500 bg-white p-3 rounded-lg shadow-sm">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Thinking...</span>
+                <span className="text-sm">
+                  Finding the best results for you...
+                </span>
               </div>
             )}
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded text-sm">
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200">
                 {error}
               </div>
             )}
@@ -333,11 +390,13 @@ export default function ChatPopup({ onClose }: ChatPopupProps) {
       </div>
 
       {/* Input Area */}
-      <ChatInput
-        onSendMessage={handleSendMessage}
-        isLoading={isLoading}
-        disabled={!user}
-      />
+      <div className="border-t bg-white">
+        <ChatInput
+          onSendMessage={handleSendMessage}
+          isLoading={isLoading}
+          disabled={!user}
+        />
+      </div>
     </div>
   );
 }

@@ -1,8 +1,10 @@
-//  src/components/ai-chat/ChatMessage.tsx
+// src/components/ai-chat/ChatMessage.tsx
 "use client";
 
-import { Bot } from "lucide-react";
+import { Bot, ExternalLink } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
+import Link from "next/link";
+import React from "react";
 
 interface ChatMessageProps {
   message: {
@@ -14,160 +16,94 @@ interface ChatMessageProps {
   userEmail?: string;
 }
 
-// Enhanced markdown renderer component
-function MarkdownRenderer({ content }: { content: string }) {
-  const renderContent = (text: string) => {
-    // Split by code blocks first
-    const codeBlockRegex = /```([\s\S]*?)```/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
+export default function ChatMessage({ message, userEmail }: ChatMessageProps) {
+  const isUser = message.role === "user";
 
-    while ((match = codeBlockRegex.exec(text)) !== null) {
-      // Add text before code block
-      if (match.index > lastIndex) {
-        parts.push({
-          type: "text",
-          content: text.slice(lastIndex, match.index),
-        });
+  // Function to parse and render the message content
+  const renderMessageContent = (content: string) => {
+    // Split content into lines
+    const lines = content.split("\n");
+
+    return lines.map((line, index) => {
+      // Check for horizontal rule
+      if (line.trim() === "---") {
+        return <hr key={index} className="my-3 border-gray-300" />;
       }
 
-      // Add code block
-      parts.push({
-        type: "codeblock",
-        content: match[1].trim(),
-      });
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Add remaining text
-    if (lastIndex < text.length) {
-      parts.push({
-        type: "text",
-        content: text.slice(lastIndex),
-      });
-    }
-
-    return parts.map((part, index) => {
-      if (part.type === "codeblock") {
+      // Check for post link pattern
+      const linkMatch = line.match(/🔗\s*\[([^\]]+)\]\(\/post\/([a-f0-9-]+)\)/);
+      if (linkMatch) {
+        const [, linkText, postId] = linkMatch;
         return (
-          <pre
-            key={index}
-            className="bg-gray-800 text-green-400 p-3 rounded-md my-2 overflow-x-auto"
-          >
-            <code className="text-sm">{part.content}</code>
-          </pre>
+          <div key={index} className="mt-2 mb-3">
+            <Link
+              href={`/post/${postId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex text-xs items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium shadow-sm"
+            >
+              {linkText}
+              <ExternalLink className="w-4 h-4" />
+            </Link>
+          </div>
         );
       }
 
-      // Process text content with proper line handling
+      // Process other formatting
+      let processedLine = line
+        // Bold text
+        .replace(
+          /\*\*([^*]+)\*\*/g,
+          '<strong class="font-semibold">$1</strong>'
+        )
+        // Emojis - make them slightly larger
+        .replace(
+          /(📦|💰|📍|📅|📷|📝|📊|💡|🔍|🔗)/g,
+          '<span class="text-lg inline-block mr-1">$1</span>'
+        );
+
       return (
         <div
           key={index}
-          dangerouslySetInnerHTML={{ __html: processTextContent(part.content) }}
+          className="mb-1"
+          dangerouslySetInnerHTML={{ __html: processedLine }}
         />
       );
     });
   };
 
-  const processTextContent = (text: string) => {
-    // Split text into lines to handle bullets properly
-    const lines = text.split("\n");
-    const processedLines = lines.map((line) => {
-      // Check if line is a bullet point
-      const bulletMatch = line.match(/^(\s*)([-*+])\s+(.*)$/);
-      if (bulletMatch) {
-        const [, indent, bullet, content] = bulletMatch;
-        const indentLevel = Math.floor(indent.length / 2); // 2 spaces per indent level
-        const marginLeft = indentLevel * 20; // 20px per level
-        return `<div class="flex items-start" style="margin-left: ${marginLeft}px; margin-bottom: 4px;">
-          <span class="text-gray-600 mr-2 mt-1">•</span>
-          <span class="flex-1">${processInlineFormatting(content)}</span>
-        </div>`;
-      }
-
-      // Check if line is a numbered list
-      const numberedMatch = line.match(/^(\s*)(\d+\.)\s+(.*)$/);
-      if (numberedMatch) {
-        const [, indent, number, content] = numberedMatch;
-        const indentLevel = Math.floor(indent.length / 2);
-        const marginLeft = indentLevel * 20;
-        return `<div class="flex items-start" style="margin-left: ${marginLeft}px; margin-bottom: 4px;">
-          <span class="text-gray-600 mr-2 mt-1 min-w-6">${number}</span>
-          <span class="flex-1">${processInlineFormatting(content)}</span>
-        </div>`;
-      }
-
-      // Regular line
-      return line.trim()
-        ? `<p class="mb-2">${processInlineFormatting(line)}</p>`
-        : "";
-    });
-
-    return processedLines.join("");
-  };
-
-  const processInlineFormatting = (text: string) => {
-    return (
-      text
-        // Inline code first (to avoid conflicts with other formatting)
-        .replace(
-          /`([^`]+)`/g,
-          '<code class="bg-gray-200 text-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>'
-        )
-        // Links: [text](url)
-        .replace(
-          /\[([^\]]+)\]\(([^)]+)\)/g,
-          '<a href="$2" class="text-blue-600 hover:text-blue-800 underline" target="_blank" rel="noopener noreferrer">$1</a>'
-        )
-        // Bold: **text** or __text__ (non-greedy)
-        .replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold">$1</strong>')
-        .replace(/__([^_]+)__/g, '<strong class="font-bold">$1</strong>')
-        // Italic: *text* or _text_ (non-greedy, avoiding conflict with bold)
-        .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em class="italic">$1</em>')
-        .replace(/(?<!_)_([^_]+)_(?!_)/g, '<em class="italic">$1</em>')
-        // Underline: ~~text~~
-        .replace(/~~([^~]+)~~/g, '<span class="line-through">$1</span>')
-        // Escape any remaining asterisks that weren't processed
-        .replace(/\*/g, "•")
-    );
-  };
-
   return (
-    <div className="text-sm text-left prose prose-sm max-w-none">
-      {renderContent(content)}
-    </div>
-  );
-}
-
-export default function ChatMessage({ message, userEmail }: ChatMessageProps) {
-  const isUser = message.role === "user";
-
-  return (
-    <div className={`flex gap-3 ${isUser ? "justify-end" : ""}`}>
-      {/* Bot Avatar - only shown for AI messages */}
+    <div className={`flex gap-3 ${isUser ? "justify-end" : ""} mb-4`}>
+      {/* Bot Avatar */}
       {!isUser && (
         <div className="flex-shrink-0">
-          <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center shadow-sm">
             <Bot className="w-4 h-4" />
           </div>
         </div>
       )}
 
       {/* Message Content */}
-      <div className={`flex flex-col ${isUser ? "max-w-[75%]" : "w-full"}`}>
+      <div
+        className={`flex flex-col ${
+          isUser ? "max-w-[75%]" : "flex-1 max-w-full"
+        }`}
+      >
         <div
-          className={`p-3 rounded-lg ${
-            isUser ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-800"
+          className={`p-4 rounded-lg ${
+            isUser
+              ? "bg-blue-600 text-white shadow-sm"
+              : "bg-white text-gray-800 shadow-sm border border-gray-200"
           }`}
         >
           {isUser ? (
-            <p className="text-sm whitespace-pre-wrap break-words text-left">
+            <p className="text-sm whitespace-pre-wrap break-words">
               {message.content}
             </p>
           ) : (
-            <MarkdownRenderer content={message.content} />
+            <div className="text-sm space-y-1">
+              {renderMessageContent(message.content)}
+            </div>
           )}
         </div>
         <p
@@ -182,7 +118,7 @@ export default function ChatMessage({ message, userEmail }: ChatMessageProps) {
         </p>
       </div>
 
-      {/* User Avatar - only shown for user messages */}
+      {/* User Avatar */}
       {isUser && (
         <div className="flex-shrink-0">
           <Avatar email={userEmail} size="sm" />
