@@ -10,6 +10,136 @@ import {
   Profile,
 } from "./types";
 
+const CATEGORY_SYNONYMS: { [key: string]: string } = {
+  // Housing
+  "housing options": "Housing",
+  "housing listings": "Housing",
+  "places to live": "Housing",
+  apartments: "Housing",
+  dorms: "Housing",
+  rooms: "Housing",
+  roommate: "Housing",
+  sublet: "Housing",
+  rentals: "Housing",
+  "student housing": "Housing",
+  // For Sale
+  "items for sale": "For Sale",
+  "things for sale": "For Sale",
+  "stuff for sale": "For Sale",
+  marketplace: "For Sale",
+  // Recent/Latest For Sale
+  "most recent items posted for sale": "For Sale",
+  "recent items": "For Sale",
+  "latest items": "For Sale",
+  "recent for sale": "For Sale",
+  "recently posted items": "For Sale",
+  "recent posts": "For Sale",
+  "recent listings": "For Sale",
+  "latest for sale": "For Sale",
+  // Campus Jobs
+  "campus jobs": "Campus Jobs",
+  "available campus jobs": "Campus Jobs",
+  "what campus jobs are available": "Campus Jobs",
+  "student jobs": "Campus Jobs",
+  "on-campus jobs": "Campus Jobs",
+  "on campus jobs": "Campus Jobs",
+  // Jobs
+  job: "Jobs",
+  jobs: "Jobs",
+  work: "Jobs",
+  employment: "Jobs",
+  // Services
+  tutoring: "Services",
+  cleaning: "Services",
+  moving: "Services",
+  "tech support": "Services",
+  // Community
+  "study group": "Community",
+  club: "Community",
+  volunteer: "Community",
+  // Personals
+  friend: "Personals",
+  romance: "Personals",
+  // Events
+  event: "Events",
+  events: "Events",
+  // Housing Wanted
+  "need housing": "Housing Wanted",
+  "looking for housing": "Housing Wanted",
+  // Resumes
+  resume: "Resumes",
+  resumes: "Resumes",
+};
+
+// Add fuzzy match utility at the top (after imports)
+function levenshtein(a: string, b: string): number {
+  const matrix = Array.from({ length: a.length + 1 }, () =>
+    new Array(b.length + 1).fill(0)
+  );
+  for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+  for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+    }
+  }
+  return matrix[a.length][b.length];
+}
+
+function fuzzyMatch(
+  word: string,
+  options: string[],
+  maxDistance = 2
+): string | null {
+  let best: { match: string; dist: number } | null = null;
+  for (const opt of options) {
+    const dist = levenshtein(word.toLowerCase(), opt.toLowerCase());
+    if (dist <= maxDistance && (!best || dist < best.dist)) {
+      best = { match: opt, dist };
+    }
+  }
+  return best ? best.match : null;
+}
+
+// Map common keywords to categories/subcategories
+const KEYWORD_CATEGORY_MAP: Record<
+  string,
+  { category: string; subcategory?: string }
+> = {
+  jobs: { category: "Campus Jobs" },
+  job: { category: "Campus Jobs" },
+  employment: { category: "Campus Jobs" },
+  phone: { category: "For Sale", subcategory: "Electronics" },
+  phones: { category: "For Sale", subcategory: "Electronics" },
+  laptop: { category: "For Sale", subcategory: "Electronics" },
+  laptops: { category: "For Sale", subcategory: "Electronics" },
+  electronic: { category: "For Sale", subcategory: "Electronics" },
+  electronics: { category: "For Sale", subcategory: "Electronics" },
+  house: { category: "Housing" },
+  houses: { category: "Housing" },
+  home: { category: "Housing" },
+  homes: { category: "Housing" },
+  apartment: { category: "Housing" },
+  apartments: { category: "Housing" },
+  bike: { category: "For Sale", subcategory: "Sports" },
+  bikes: { category: "For Sale", subcategory: "Sports" },
+  bicycle: { category: "For Sale", subcategory: "Sports" },
+  furniture: { category: "For Sale", subcategory: "Furniture" },
+  textbook: { category: "For Sale", subcategory: "Books" },
+  textbooks: { category: "For Sale", subcategory: "Books" },
+  book: { category: "For Sale", subcategory: "Books" },
+  books: { category: "For Sale", subcategory: "Books" },
+  roommate: { category: "Housing", subcategory: "Roommate" },
+  sublet: { category: "Housing", subcategory: "Sublet" },
+  room: { category: "Housing", subcategory: "Roommate" },
+  rooms: { category: "Housing", subcategory: "Roommate" },
+  // add more as needed
+};
+
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const geminiModel = genAI.getGenerativeModel({
@@ -251,7 +381,12 @@ export class AIAgent {
       userContext?.university
     );
 
-    const systemPrompt = `You are an AI assistant for a campus marketplace platform. Your role is to help users find items, provide marketplace guidance, and answer questions based on REAL DATA from our database.
+    // Add Capmus details to the system prompt
+    const capmusDetails = `\nCAPMUS PLATFORM INFO:\n- Capmus is an online marketplace for university students, especially Stanford, to buy, sell, and trade goods and services such as housing, off-campus jobs, and bikes.\n- Listings are verified to ensure authenticity.\n- Users must have a @stanford.edu email address in order to post.\n- The founder and CEO is Greg Wientje.\n- Capmus helps students connect safely and efficiently for campus-related transactions.\n- The platform is designed to foster a trusted community for students to exchange goods and services.\n- Capmus is not affiliated with Stanford University but is built for the Stanford student community.\n`;
+
+    const systemPrompt = `You are an AI assistant for a campus marketplace platform. Your main goal is to support and guide users with any questions about the marketplace. Be friendly, conversational, and approachable—like a helpful student peer. Use a warm, supportive tone, and always try to make the user feel welcome and understood. If the user seems lost or unsure, offer suggestions or clarifying questions. When answering, be clear, concise, and human—avoid sounding robotic. If you don't know something, say so honestly, and offer to help find the answer or suggest next steps.
+
+Your role is to help users find items, provide marketplace guidance, and answer questions based on REAL DATA from our database.
 
 IMPORTANT RULES:
 1. ONLY suggest items that actually exist in our database
@@ -293,20 +428,17 @@ MARKETPLACE STATISTICS:
 ${
   marketplaceContext.allRecentPosts &&
   marketplaceContext.allRecentPosts.length > 0
-    ? `
-RECENT MARKETPLACE ACTIVITY (ALL CAMPUSES):
-${marketplaceContext.allRecentPosts
-  .slice(0, 5)
-  .map(
-    (post) =>
-      `- "${post.title}" (${post.main_category}) - ${
-        post.price ? `$${post.price}` : "Free"
-      } - ${post.campus} - Posted ${new Date(
-        post.created_at
-      ).toLocaleDateString()}`
-  )
-  .join("\n")}
-`
+    ? `\nRECENT MARKETPLACE ACTIVITY (ALL CAMPUSES):\n${marketplaceContext.allRecentPosts
+        .slice(0, 5)
+        .map(
+          (post) =>
+            `- "${post.title}" (${post.main_category}) - ${
+              post.price ? `$${post.price}` : "Free"
+            } - ${post.campus} - Posted ${new Date(
+              post.created_at
+            ).toLocaleDateString()}`
+        )
+        .join("\n")}`
     : ""
 }
 
@@ -314,20 +446,21 @@ ${
   userContext?.university &&
   marketplaceContext.universityPosts &&
   marketplaceContext.universityPosts.length > 0
-    ? `
-RECENT POSTS AT ${userContext.university}:
-${marketplaceContext.universityPosts
-  .slice(0, 5)
-  .map(
-    (post) =>
-      `- "${post.title}" (${post.main_category}) - ${
-        post.price ? `$${post.price}` : "Free"
-      } - Posted ${new Date(post.created_at).toLocaleDateString()}`
-  )
-  .join("\n")}
-`
+    ? `\nRECENT POSTS AT ${
+        userContext.university
+      }:\n${marketplaceContext.universityPosts
+        .slice(0, 5)
+        .map(
+          (post) =>
+            `- "${post.title}" (${post.main_category}) - ${
+              post.price ? `$${post.price}` : "Free"
+            } - Posted ${new Date(post.created_at).toLocaleDateString()}`
+        )
+        .join("\n")}`
     : ""
 }
+
+${capmusDetails}
 
 When users ask about specific items or categories, search the ENTIRE database (all universities) unless they specifically ask for their campus only. Always provide rich, detailed responses with all relevant information including direct links to view posts.`;
 
@@ -348,10 +481,20 @@ When users ask about specific items or categories, search the ENTIRE database (a
         .select("*")
         .order("created_at", { ascending: false });
 
-      // Apply text search
+      // If searching by category/subcategory, and query is just the subcategory, skip text search
+      if (
+        filters.main_category &&
+        filters.sub_category &&
+        query &&
+        query.toLowerCase() === filters.sub_category.toLowerCase()
+      ) {
+        query = "";
+      }
+
+      // Apply text search (now includes campus/university)
       if (query) {
         supabaseQuery = supabaseQuery.or(
-          `title.ilike.%${query}%,description.ilike.%${query}%,main_category.ilike.%${query}%,sub_category.ilike.%${query}%`
+          `title.ilike.%${query}%,description.ilike.%${query}%,main_category.ilike.%${query}%,sub_category.ilike.%${query}%,campus.ilike.%${query}%`
         );
       }
 
@@ -399,9 +542,87 @@ When users ask about specific items or categories, search the ENTIRE database (a
 
   // Enhanced search intent extraction
   static extractSearchIntent(
-    message: string
-  ): { query: string; category?: string; searchAllCampuses?: boolean } | null {
+    message: string,
+    userUniversity?: string
+  ): {
+    query: string;
+    category?: string;
+    subcategory?: string;
+    searchAllCampuses?: boolean;
+    campus?: string;
+    correctionNote?: string;
+  } | null {
     const lowerMessage = message.toLowerCase();
+    let correctionNote = "";
+
+    // Fuzzy match for main categories, subcategories, and keywords
+    const allMainCats = [...MAIN_CATEGORIES];
+    const allSubCats = Object.values(SUB_CATEGORIES).flat();
+    const allKeywords = Object.keys(KEYWORD_CATEGORY_MAP);
+    const words = lowerMessage.split(/\s+/);
+    let matchedCategory: string | undefined;
+    let matchedSubcategory: string | undefined;
+    let matchedKeyword: string | undefined;
+    let correctedWord: string | undefined;
+
+    for (const word of words) {
+      // Fuzzy match main category
+      const cat = fuzzyMatch(word, allMainCats);
+      if (cat) {
+        matchedCategory = cat;
+        if (cat.toLowerCase() !== word)
+          correctionNote = `Corrected "${word}" to "${cat}".`;
+        break;
+      }
+      // Fuzzy match subcategory
+      const subcat = fuzzyMatch(word, allSubCats);
+      if (subcat) {
+        matchedSubcategory = subcat;
+        if (subcat.toLowerCase() !== word)
+          correctionNote = `Corrected "${word}" to "${subcat}".`;
+        break;
+      }
+      // Fuzzy match keyword
+      const key = fuzzyMatch(word, allKeywords);
+      if (key) {
+        matchedKeyword = key;
+        if (key.toLowerCase() !== word)
+          correctionNote = `Corrected "${word}" to "${key}".`;
+        break;
+      }
+    }
+
+    // If a mapped keyword is found, use its mapping
+    if (matchedKeyword && KEYWORD_CATEGORY_MAP[matchedKeyword]) {
+      const map = KEYWORD_CATEGORY_MAP[matchedKeyword];
+      return {
+        query: matchedKeyword,
+        category: map.category,
+        subcategory: map.subcategory,
+        correctionNote,
+      };
+    }
+    // If a main category is found
+    if (matchedCategory) {
+      return {
+        query: matchedCategory,
+        category: matchedCategory,
+        correctionNote,
+      };
+    }
+    // If a subcategory is found
+    if (matchedSubcategory) {
+      // Find the main category for this subcategory
+      const mainCat = Object.entries(SUB_CATEGORIES).find(([main, subs]) =>
+        (subs as unknown as string[]).includes(matchedSubcategory as string)
+      )?.[0];
+      return {
+        query: matchedSubcategory,
+        category: mainCat,
+        subcategory: matchedSubcategory,
+        correctionNote,
+      };
+    }
 
     // Check if user wants to search all campuses
     const searchAllCampuses =
@@ -417,7 +638,34 @@ When users ask about specific items or categories, search the ENTIRE database (a
       lowerMessage.includes("my university") ||
       lowerMessage.includes("at my school");
 
-    // Check for explicit search patterns
+    // Detect explicit campus mention (e.g., 'at Stanford University')
+    let campus: string | undefined;
+    const atCampusMatch = message.match(/at ([A-Za-z ,.'-]+)/i);
+    if (atCampusMatch) {
+      const campusName = atCampusMatch[1].trim();
+      // Try to match to a known campus
+      const knownCampus = CAMPUS_LIST.find(
+        (c) => c.toLowerCase() === campusName.toLowerCase()
+      );
+      if (knownCampus) campus = knownCampus;
+      else campus = campusName;
+    } else if (lowerMessage.includes("at my university") && userUniversity) {
+      campus = userUniversity;
+    }
+
+    // 1. Check for category synonyms/phrases
+    for (const [phrase, category] of Object.entries(CATEGORY_SYNONYMS)) {
+      if (lowerMessage.includes(phrase)) {
+        return {
+          query: phrase,
+          category,
+          searchAllCampuses: searchAllCampuses || !myCampusOnly,
+          campus,
+        };
+      }
+    }
+
+    // 2. Check for explicit search patterns
     const searchPatterns = [
       /(?:looking for|find|search|need|want|any|show me)\s+(.+)/i,
       /(.+)\s+(?:for sale|available)/i,
@@ -435,15 +683,25 @@ When users ask about specific items or categories, search the ENTIRE database (a
           query.toLowerCase().includes(cat.toLowerCase())
         );
 
+        // Check for synonyms in the query
+        let synonymCategory: string | undefined;
+        for (const [phrase, cat] of Object.entries(CATEGORY_SYNONYMS)) {
+          if (query.toLowerCase().includes(phrase)) {
+            synonymCategory = cat;
+            break;
+          }
+        }
+
         return {
           query,
-          category,
+          category: synonymCategory || category,
           searchAllCampuses: searchAllCampuses || !myCampusOnly,
+          campus,
         };
       }
     }
 
-    // Check for direct category mentions
+    // 3. Check for direct category mentions
     const category = MAIN_CATEGORIES.find((cat) =>
       lowerMessage.includes(cat.toLowerCase())
     );
@@ -453,10 +711,11 @@ When users ask about specific items or categories, search the ENTIRE database (a
         query: category,
         category,
         searchAllCampuses: searchAllCampuses || !myCampusOnly,
+        campus,
       };
     }
 
-    // Check for subcategory mentions
+    // 4. Check for subcategory mentions
     for (const [mainCat, subCats] of Object.entries(SUB_CATEGORIES)) {
       const subCategory = subCats.find((sub) =>
         lowerMessage.includes(sub.toLowerCase())
@@ -465,7 +724,9 @@ When users ask about specific items or categories, search the ENTIRE database (a
         return {
           query: subCategory,
           category: mainCat,
+          subcategory: subCategory,
           searchAllCampuses: searchAllCampuses || !myCampusOnly,
+          campus,
         };
       }
     }
@@ -501,17 +762,87 @@ ${
     context: ChatContext
   ): Promise<string> {
     try {
+      // --- NEW: Intercept 'What is Capmus?' queries and return a fixed answer ---
+      const capmusQuestionPatterns = [
+        /^what is capmus[?]?$/i,
+        /^tell me about capmus[?]?$/i,
+        /^who is the founder of capmus[?]?$/i,
+        /^who is the ceo of capmus[?]?$/i,
+        /^describe capmus[?]?$/i,
+        /^capmus info[?]?$/i,
+      ];
+      if (capmusQuestionPatterns.some((re) => re.test(userMessage.trim()))) {
+        return `Capmus is an online marketplace for university students, especially Stanford, to buy, sell, and trade goods and services (housing, jobs, bikes, etc.).\nListings are verified for authenticity.\nUsers must have a @stanford.edu email address to post.\nThe founder and CEO is Greg Wientje.\nCapmus helps students connect safely and efficiently for campus-related transactions.\nThe platform is designed to foster a trusted community for students to exchange goods and services.\nCapmus is not affiliated with Stanford University but is built for the Stanford student community.`;
+      }
+      // --- END NEW ---
+
       // Get user context if not available
       let userContext = context.userInfo;
       if (!userContext?.university && context.userInfo?.id) {
         userContext = await this.getUserContext(context.userInfo.id);
       }
 
+      // --- NEW: Check for 'my posts' or similar queries first ---
+      const myPostsPhrases = [
+        "my posts",
+        "my post",
+        "my listings",
+        "my active listings",
+        "my items",
+        "show me my posts",
+        "show my posts",
+        "show me my listings",
+        "show my listings",
+        "my selling",
+        "my sales",
+        "my advertisements",
+        "my ads",
+      ];
+      const lowerMessage = userMessage.toLowerCase();
+      // Extract intent for campus
+      const searchIntent = this.extractSearchIntent(
+        userMessage,
+        userContext?.university
+      );
+      if (
+        myPostsPhrases.some((phrase) => lowerMessage.includes(phrase)) &&
+        userContext?.id
+      ) {
+        // If campus is specified, filter by both seller_id and campus
+        let userPostsQuery = supabase
+          .from("posts")
+          .select("*")
+          .eq("seller_id", userContext.id)
+          .order("created_at", { ascending: false });
+        if (searchIntent?.campus) {
+          userPostsQuery = userPostsQuery.eq("campus", searchIntent.campus);
+        }
+        const { data: userPosts, error } = await userPostsQuery;
+
+        if (!error && userPosts && userPosts.length > 0) {
+          const enhancedUserPosts = await this.enhancePosts(userPosts);
+          const postsList = enhancedUserPosts
+            .slice(0, 5)
+            .map((post) => this.formatPostForDisplay(post))
+            .join("\n\n---\n\n");
+
+          return `You have ${userPosts.length} active listing${
+            userPosts.length > 1 ? "s" : ""
+          }:\n\n${postsList}${
+            userPosts.length > 5
+              ? `\n\n📊 **And ${userPosts.length - 5} more listings...**`
+              : ""
+          }\n\n💡 **Tip:** You can edit or delete your posts by clicking \"View Full Details\"`;
+        } else {
+          return "You don't have any active listings yet. Would you like to create your first post? I can guide you through the process!";
+        }
+      }
+      // --- END NEW ---
+
       // Check if this is a search query (expanded detection)
-      const searchIntent = this.extractSearchIntent(userMessage);
+      // (searchIntent already extracted above)
 
       // Also check for general item mentions even without explicit search keywords
-      const lowerMessage = userMessage.toLowerCase();
       const mightBeSearching =
         searchIntent ||
         lowerMessage.includes("bike") ||
@@ -526,29 +857,76 @@ ${
 
       if (mightBeSearching) {
         const filters: Record<string, any> = {};
+        let correctionNote = "";
 
         // Extract search term from message if no explicit search intent
         let searchQuery = "";
         if (searchIntent) {
-          searchQuery = searchIntent.query;
-          if (searchIntent.category) {
+          if (searchIntent.correctionNote) {
+            correctionNote = searchIntent.correctionNote;
+          }
+          // If the intent is a category synonym, don't use the phrase as a text search
+          if (searchIntent.category && CATEGORY_SYNONYMS[searchIntent.query]) {
+            searchQuery = "";
             filters.main_category = searchIntent.category;
+          } else {
+            searchQuery = searchIntent.query;
+            if (searchIntent.category) {
+              filters.main_category = searchIntent.category;
+            }
+          }
+          if (searchIntent.campus) {
+            filters.campus = searchIntent.campus;
+          }
+          if (searchIntent.subcategory) {
+            filters.sub_category = searchIntent.subcategory;
           }
         } else {
-          // Try to extract item name from message
+          // Try to extract a strong keyword from the message
           const words = lowerMessage.split(/\s+/);
           const itemKeywords = [
+            "tesla",
             "bike",
-            "laptop",
-            "book",
-            "furniture",
+            "bikes",
+            "bicycle",
+            "house",
+            "houses",
+            "home",
+            "homes",
+            "job",
+            "jobs",
             "electronics",
-            "textbook",
+            "laptop",
             "phone",
+            "car",
+            "cars",
             "desk",
             "chair",
+            "furniture",
+            "textbook",
+            "book",
+            "books",
+            "apartment",
+            "apartments",
+            "roommate",
+            "sublet",
+            "room",
+            "rooms",
+            "stanford",
+            "berkeley",
+            "harvard",
+            "mit",
+            // add more as needed
           ];
-          searchQuery = words.find((word) => itemKeywords.includes(word)) || "";
+          const foundKeyword = words.find((word) =>
+            itemKeywords.includes(word)
+          );
+          if (foundKeyword) {
+            searchQuery = foundKeyword;
+          } else {
+            // fallback: use the first non-stopword as keyword
+            searchQuery = words.find((w) => w.length > 3) || words[0] || "";
+          }
         }
 
         const posts = await this.searchRelevantPosts(
@@ -567,6 +945,9 @@ ${
             link: `/post/${p.id}`,
           }))
         );
+
+        // If a correction was made, prepend a note to the response
+        let correctionMsg = correctionNote ? `🔎 ${correctionNote}\n` : "";
 
         if (posts.length > 0) {
           const searchScope =
@@ -593,13 +974,13 @@ ${
             .map((post) => this.formatPostForDisplay(post))
             .join("\n\n---\n\n");
 
-          return `I found ${posts.length} matching item${
+          return `${correctionMsg}I found ${posts.length} matching item${
             posts.length > 1 ? "s" : ""
           }${searchScope}:\n\n${listings}\n\n${
             posts.length > 5
               ? `📊 **And ${posts.length - 5} more items available!**\n\n`
               : ""
-          }💡 **Tip:** Click on "View Full Details" to see photos and contact the seller. Would you like to refine your search or see items from ${
+          }💡 **Tip:** Click on \"View Full Details\" to see photos and contact the seller. Would you like to refine your search or see items from ${
             searchIntent?.searchAllCampuses === false
               ? "other campuses"
               : "your campus only"
@@ -610,18 +991,11 @@ ${
               ? ` at ${userContext?.university}`
               : " in the entire marketplace";
 
-          return `I couldn't find any "${searchQuery}" items${searchScope}. 
-
-Would you like to:
-1. 🔍 Search all campuses? (if you haven't already)
-2. 📝 Create a new post to sell or request this item?
-3. 🔔 Set up an alert for when this item becomes available?
-
-Just let me know how I can help!`;
+          return `${correctionMsg}I couldn't find any "${searchQuery}" items${searchScope}. \n\nWould you like to:\n1. 🔍 Search all campuses? (if you haven't already)\n2. 📝 Create a new post to sell or request this item?\n3. 🔔 Set up an alert for when this item becomes available?\n\nJust let me know how I can help!`;
         }
       }
 
-      // Check if user is asking about their own posts
+      // (Keep the old 'my post' check for backward compatibility, but it should never trigger now)
       if (userMessage.toLowerCase().includes("my post") && userContext?.id) {
         const { data: userPosts, error } = await supabase
           .from("posts")
@@ -642,7 +1016,7 @@ Just let me know how I can help!`;
             userPosts.length > 5
               ? `\n\n📊 **And ${userPosts.length - 5} more listings...**`
               : ""
-          }\n\n💡 **Tip:** You can edit or delete your posts by clicking "View Full Details"`;
+          }\n\n💡 **Tip:** You can edit or delete your posts by clicking \"View Full Details\"`;
         } else {
           return "You don't have any active listings yet. Would you like to create your first post? I can guide you through the process!";
         }

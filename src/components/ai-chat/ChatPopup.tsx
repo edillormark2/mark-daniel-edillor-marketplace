@@ -28,6 +28,105 @@ interface Message {
   timestamp: Date;
 }
 
+// Utility to generate recommended prompts based on last user message
+function getRecommendedPrompts(lastUserMessage: string, userProfile: any) {
+  const lower = lastUserMessage.toLowerCase();
+  const university = userProfile?.university || "my university";
+  // Housing
+  if (lower.includes("housing")) {
+    return [
+      {
+        text: `Show me housing options at ${university}`,
+        query: userProfile?.university
+          ? `Find housing options at ${userProfile.university}`
+          : "Find housing options at my university",
+      },
+      {
+        text: "Show me all housing options across all campuses",
+        query: "Show me all available housing options across all campuses",
+      },
+      {
+        text: "Show me the most recent housing posts",
+        query: "Show me the most recent housing posts",
+      },
+    ];
+  }
+  // Campus Jobs
+  if (lower.includes("campus job") || lower.includes("student job")) {
+    return [
+      {
+        text: "Show me part-time campus jobs",
+        query: "Show me part-time campus jobs",
+      },
+      {
+        text: "Show me full-time campus jobs",
+        query: "Show me full-time campus jobs",
+      },
+      {
+        text: `Show me campus jobs at ${university}`,
+        query: userProfile?.university
+          ? `Show me campus jobs at ${userProfile.university}`
+          : "Show me campus jobs at my university",
+      },
+    ];
+  }
+  // For Sale
+  if (
+    lower.includes("for sale") ||
+    lower.includes("recent items") ||
+    lower.includes("latest items")
+  ) {
+    return [
+      {
+        text: "Show me electronics for sale",
+        query: "Show me electronics for sale",
+      },
+      {
+        text: "Show me furniture for sale",
+        query: "Show me furniture for sale",
+      },
+      {
+        text: "Show me the most recent items posted for sale",
+        query: "Show me the most recent items posted for sale",
+      },
+    ];
+  }
+  // My posts
+  if (lower.includes("my post") || lower.includes("my listing")) {
+    return [
+      {
+        text: "Show me my posts",
+        query: "Show me my posts",
+      },
+      {
+        text: "Show me my active listings",
+        query: "Show me my active listings",
+      },
+      {
+        text: "Show me my posts at my university",
+        query: userProfile?.university
+          ? `Show me my posts at ${userProfile.university}`
+          : "Show me my posts at my university",
+      },
+    ];
+  }
+  // Default/fallback
+  return [
+    {
+      text: "Show me the most recent items posted for sale",
+      query: "Show me the most recent items posted for sale",
+    },
+    {
+      text: "Show me housing options",
+      query: "Show me all available housing options across all campuses",
+    },
+    {
+      text: "What campus jobs are available?",
+      query: "What campus jobs are available?",
+    },
+  ];
+}
+
 export default function ChatPopup({ onClose }: ChatPopupProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -225,16 +324,9 @@ export default function ChatPopup({ onClose }: ChatPopupProps) {
   const starterSuggestions = user
     ? [
         {
-          emoji: "🔍",
-          text: "Find electronics across all campuses",
-          query: "Show me all electronics for sale across all universities",
-        },
-        {
-          emoji: "📚",
-          text: "Find textbooks at my university",
-          query: userProfile?.university
-            ? `Find textbooks for sale at ${userProfile.university}`
-            : "Find textbooks for sale at my campus",
+          emoji: "❓",
+          text: "What is Capmus?",
+          query: "What is Capmus?",
         },
         {
           emoji: "🏠",
@@ -307,6 +399,11 @@ export default function ChatPopup({ onClose }: ChatPopupProps) {
           </button>
         </div>
       </div>
+      {/* Info Note */}
+      <div className="bg-blue-50 text-blue-700 text-xs px-4 py-2 border-b border-blue-100">
+        Note: Capmus AI Assistant is under development and training. Some
+        details may not be fully accurate.
+      </div>
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
@@ -364,12 +461,11 @@ export default function ChatPopup({ onClose }: ChatPopupProps) {
           </div>
         ) : (
           <>
-            {messages.map((message) => (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                userEmail={user?.email}
-              />
+            {messages.map((message, idx) => (
+              <div key={message.id}>
+                <ChatMessage message={message} userEmail={user?.email} />
+                {/* Remove recommended prompts after assistant message */}
+              </div>
             ))}
             {isLoading && (
               <div className="flex items-center gap-2 text-gray-500 bg-white p-3 rounded-lg shadow-sm">
