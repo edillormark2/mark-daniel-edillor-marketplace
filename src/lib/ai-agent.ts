@@ -776,6 +776,81 @@ ${
       }
       // --- END NEW ---
 
+      // --- NEW: Conversational intent detection ---
+      const conversationalPhrases = [
+        "thank you",
+        "thanks",
+        "great",
+        "nice",
+        "wow",
+        "cool",
+        "awesome",
+        "amazing",
+        "good job",
+        "well done",
+        "appreciate it",
+        "appreciate your help",
+        "love it",
+        "fantastic",
+        "super",
+        "brilliant",
+        "excellent",
+        "perfect",
+        "sweet",
+        "cheers",
+        "you rock",
+        "you are the best",
+        "that helps",
+        "that helped",
+        "that was helpful",
+        "so helpful",
+        "very helpful",
+        "helpful",
+        "got it",
+        "understood",
+        "makes sense",
+        "ok",
+        "okay",
+        "alright",
+        "sounds good",
+        "sounds great",
+        "cool, thanks",
+        "cool, thank you",
+        "good, thanks",
+        "good, thank you",
+        "awesome, thanks",
+        "awesome, thank you",
+        "nice, thanks",
+        "nice, thank you",
+        "great, thanks",
+        "great, thank you",
+        "perfect, thanks",
+        "perfect, thank you",
+      ];
+      const lowerUserMessage = userMessage.trim().toLowerCase();
+      if (
+        conversationalPhrases.some(
+          (phrase) =>
+            lowerUserMessage === phrase || lowerUserMessage.includes(phrase)
+        ) &&
+        lowerUserMessage.length <= 60 // avoid matching long sentences
+      ) {
+        // Friendly, human-like responses (randomized for variety)
+        const responses = [
+          "You're very welcome! 😊 Let me know if you need anything else.",
+          "Glad I could help! If you have more questions, just ask.",
+          "Happy to help! Let me know if you need anything else.",
+          "Anytime! If you have more questions, I'm here.",
+          "Thanks for your kind words! If you need more help, just let me know.",
+          "You're awesome too! Let me know if you want to explore more on Capmus.",
+          "No problem! If you want to search for something else, just type it in.",
+          "😊 Always happy to help!",
+          "Let me know if you want to browse more items or need assistance.",
+        ];
+        return responses[Math.floor(Math.random() * responses.length)];
+      }
+      // --- END NEW ---
+
       // Get user context if not available
       let userContext = context.userInfo;
       if (!userContext?.university && context.userInfo?.id) {
